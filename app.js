@@ -1,3 +1,8 @@
+// Guard against duplicate script execution after conflict resolution.
+ideappBoot: {
+if (globalThis.__ideappInitialized) break ideappBoot;
+globalThis.__ideappInitialized = true;
+
 const STORAGE_KEY = "ideappActivityIdeas.v1";
 const VOTES_KEY = "ideappActivityVotes.v1";
 const SWIPE_THRESHOLD = 96;
@@ -357,3 +362,4 @@ window.addEventListener("keydown", (event) => {
 });
 
 render();
+}
