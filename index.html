@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Ideapp is a swipeable feed for posting, discovering, and voting on memorable activity ideas." />
+  <title>Ideapp — Adventure Ideas</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="app-shell" aria-label="Ideapp social idea feed">
+    <header class="top-edge" aria-label="App navigation">
+      <a class="brand" href="#top" aria-label="Ideapp home">
+        <span class="brand-mark" aria-hidden="true"></span>
+        Ideapp
+      </a>
+      <div class="top-actions">
+        <select id="sortIdeas" aria-label="Sort idea feed">
+          <option value="hot">Hot</option>
+          <option value="new">New</option>
+          <option value="split">Debated</option>
+        </select>
+        <button class="icon-button" id="openComposer" type="button" aria-label="Post a new idea">+</button>
+      </div>
+    </header>
+
+    <section class="feed" id="ideaFeed" aria-label="Scrollable idea cards"></section>
+
+    <aside class="right-edge" aria-label="Voting actions">
+      <button class="action-button yes" id="yesButton" type="button" aria-label="Vote yes on current idea">
+        <span aria-hidden="true">✓</span>
+        <small>yes</small>
+      </button>
+      <button class="action-button no" id="noButton" type="button" aria-label="Vote no on current idea">
+        <span aria-hidden="true">×</span>
+        <small>no</small>
+      </button>
+      <button class="action-button" id="seedButton" type="button" aria-label="Add sample ideas">
+        <span aria-hidden="true">↻</span>
+        <small>seed</small>
+      </button>
+    </aside>
+
+    <aside class="bottom-edge" aria-live="polite">
+      <div>
+        <span class="micro-label">Your read</span>
+        <strong id="userType">Still deciding</strong>
+      </div>
+      <div>
+        <span class="micro-label">Feed pulse</span>
+        <strong id="feedPulse">Fresh start</strong>
+      </div>
+    </aside>
+  </main>
+
+  <dialog class="composer" id="composerDialog" aria-labelledby="composerTitle">
+    <form id="ideaForm" method="dialog">
+      <div class="composer-head">
+        <div>
+          <p class="micro-label">Post to Ideapp</p>
+          <h1 id="composerTitle">Drop an idea</h1>
+        </div>
+        <button class="plain-button" id="closeComposer" type="button" aria-label="Close composer">Close</button>
+      </div>
+
+      <label for="title">Activity</label>
+      <input id="title" name="title" maxlength="72" placeholder="Midnight bakery crawl" required />
+
+      <label for="description">Why it could be memorable <span>optional</span></label>
+      <textarea id="description" name="description" maxlength="280" placeholder="Add the little detail that makes this worth leaving the couch for."></textarea>
+
+      <div class="form-grid">
+        <div>
+          <label for="category">Mood</label>
+          <select id="category" name="category">
+            <option>Outdoors</option>
+            <option>Food</option>
+            <option>Creative</option>
+            <option>Night</option>
+            <option>Low-key</option>
+            <option>Wildcard</option>
+            <option>Adrenaline</option>
+            <option>Cozy</option>
+            <option>Social</option>
+            <option>Solo</option>
+            <option>Cheap</option>
+            <option>Road trip</option>
+          </select>
+        </div>
+        <div>
+          <label for="effort">Effort</label>
+          <select id="effort" name="effort">
+            <option>5 minutes</option>
+            <option>Easy</option>
+            <option>Medium</option>
+            <option>Full send</option>
+            <option>All day</option>
+            <option>Plan ahead</option>
+            <option>No money</option>
+            <option>Bring friends</option>
+          </select>
+        </div>
+      </div>
+
+      <button class="submit-button" type="submit">Post idea</button>
+    </form>
+  </dialog>
+
+  <template id="ideaTemplate">
+    <article class="idea-slide">
+      <div class="vote-stamp yes-stamp yes">YES</div>
+      <div class="vote-stamp no-stamp no">NO</div>
+      <div class="idea-backdrop" aria-hidden="true"></div>
+      <section class="idea-content">
+        <div class="idea-copy">
+          <div class="tags meta"></div>
+          <h2></h2>
+          <h3 class="legacy-title" hidden></h3>
+          <p></p>
+          <div class="judgements judgement"></div>
+        </div>
+        <div class="idea-stats">
+          <span class="approval"></span>
+          <span class="counts score"></span>
+          <button class="delete legacy-delete" type="button" aria-hidden="true" tabindex="-1">delete</button>
+        </div>
+      </section>
+    </article>
+  </template>
+
+  <script src="app.js" defer></script>
+</body>
+</html>
