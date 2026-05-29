@@ -5,6 +5,7 @@ globalThis.__ideappInitialized = true;
 var STORAGE_KEY = "ideappActivityIdeas.v1";
 var VOTES_KEY = "ideappActivityVotes.v1";
 var SWIPE_THRESHOLD = 120;
+var CLEAR_VOTE_THRESHOLD = 34;
 var VOTE_ANIMATION_MS = 380;
 var VOTE_SCROLL_DELAY_MS = 460;
 var TAG_LIMIT = 5;
@@ -263,8 +264,7 @@ function attachSwipeHandlers(slide) {
   slide.addEventListener("pointermove", (event) => {
     if (pointerId !== event.pointerId) return;
     currentX = event.clientX - startX;
-    const choice = Math.abs(currentX) > SWIPE_THRESHOLD ? (currentX > 0 ? "yes" : "no") : "";
-    setVotePreview(slide, choice);
+    setDragPreview(slide, currentX);
   });
 
   slide.addEventListener("pointerup", (event) => finishSwipe(event.pointerId));
@@ -276,18 +276,37 @@ function attachSwipeHandlers(slide) {
     slide.classList.remove("is-dragging");
     pointerId = null;
 
-    if (currentX > SWIPE_THRESHOLD) {
-      animateVote(slide, "yes");
-      return;
-    }
-
-    if (currentX < -SWIPE_THRESHOLD) {
-      animateVote(slide, "no");
+    const choice = voteChoiceForDrag(slide, currentX);
+    if (choice) {
+      animateVote(slide, choice);
       return;
     }
 
     clearVotePreview(slide);
   }
+}
+
+function setDragPreview(slide, dragX) {
+  const choice = voteChoiceForDrag(slide, dragX);
+  if (choice) setVotePreview(slide, choice);
+  else clearVotePreview(slide);
+}
+
+function voteChoiceForDrag(slide, dragX) {
+  const currentVote = votes[slide.dataset.id] || "";
+  if (currentVote === "yes") {
+    if (dragX < -SWIPE_THRESHOLD) return "no";
+    if (dragX < -CLEAR_VOTE_THRESHOLD) return "yes";
+    return "";
+  }
+  if (currentVote === "no") {
+    if (dragX > SWIPE_THRESHOLD) return "yes";
+    if (dragX > CLEAR_VOTE_THRESHOLD) return "no";
+    return "";
+  }
+  if (dragX > SWIPE_THRESHOLD) return "yes";
+  if (dragX < -SWIPE_THRESHOLD) return "no";
+  return "";
 }
 
 function setVotePreview(slide, choice) {
@@ -331,8 +350,10 @@ function voteCurrent(choice) {
 function animateVote(slide, choice) {
   if (slide.dataset.animating === "true") return;
   const id = slide.dataset.id;
+  const previous = votes[id] || "";
+  const shouldAdvance = shouldAdvanceAfterVote(previous, choice);
   let nextSlide = slide.nextElementSibling;
-  if (!nextSlide) {
+  if (shouldAdvance && !nextSlide) {
     appendIdeaSlides(1);
     nextSlide = slide.nextElementSibling;
   }
@@ -343,11 +364,15 @@ function animateVote(slide, choice) {
     vote(id, choice, slide);
     updateSlideCounts(id);
     setTimeout(() => {
-      scrollToSlide(nextSlide || slide);
+      if (shouldAdvance) scrollToSlide(nextSlide || slide);
       clearVotePreview(slide);
       delete slide.dataset.animating;
     }, VOTE_SCROLL_DELAY_MS - VOTE_ANIMATION_MS);
   }, VOTE_ANIMATION_MS);
+}
+
+function shouldAdvanceAfterVote(previous, choice) {
+  return !previous || previous !== choice;
 }
 
 function vote(id, choice, votedSlide = null) {
