@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="Ideapp is a swipeable feed for posting, discovering, and voting on memorable activity ideas." />
   <title>Ideapp — Adventure Ideas</title>
+  <link rel="stylesheet" href="styles.css?v=20260529-fix3" />
+  <link rel="stylesheet" href="styles.css?v=20260529-fix2" />
+  <link rel="stylesheet" href="styles.css?v=20260528-fix1" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -128,6 +131,747 @@
     </article>
   </template>
 
+  <script src="app.js?v=20260529-fix3" defer></script>
+      <div class="vote-stamp yes-stamp">YES</div>
+      <div class="vote-stamp no-stamp">NO</div>
+      <div class="idea-backdrop" aria-hidden="true"></div>
+      <section class="idea-content">
+        <div class="idea-copy">
+          <div class="tags"></div>
+          <h2></h2>
+          <p></p>
+          <div class="judgements"></div>
+        </div>
+        <div class="idea-stats">
+          <span class="approval"></span>
+          <span class="counts"></span>
+        </div>
+      </section>
+    </article>
+  </template>
+
+  <script src="app.js?v=20260529-fix2" defer></script>
+  <script src="app.js?v=20260528-fix1" defer></script>
   <script src="app.js" defer></script>
+  <title>Spur — Adventure Ideas</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --teal: #0f8f8c;
+      --teal-dark: #086765;
+      --teal-soft: #e5f6f4;
+      --coral: #ff745c;
+      --coral-dark: #d85440;
+      --coral-soft: #fff0ec;
+      --ink: #173231;
+      --muted: #62716f;
+      --line: #dce8e5;
+      --paper: #fffefa;
+      --wash: #f6fbfa;
+      --shadow: 0 18px 45px rgba(12, 62, 61, 0.11);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at top left, rgba(255, 116, 92, 0.13), transparent 30rem),
+        linear-gradient(180deg, #f8fffd 0%, #f4faf9 100%);
+      color: var(--ink);
+      min-height: 100vh;
+    }
+
+    button,
+    input,
+    textarea,
+    select { font: inherit; }
+
+    button { cursor: pointer; }
+
+    .shell {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 30px 0 56px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      gap: 28px;
+      align-items: end;
+      margin-bottom: 28px;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--teal-dark);
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      font-size: 1.45rem;
+      margin-bottom: 24px;
+    }
+
+    .mark {
+      width: 34px;
+      height: 34px;
+      border-radius: 50% 50% 50% 10%;
+      background: linear-gradient(135deg, var(--teal), var(--coral));
+      transform: rotate(-14deg);
+      box-shadow: 0 8px 20px rgba(15, 143, 140, 0.22);
+    }
+
+    .eyebrow {
+      color: var(--coral-dark);
+      font-size: 0.78rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.13em;
+      margin: 0 0 12px;
+    }
+
+    h1 {
+      max-width: 780px;
+      font-size: clamp(2.4rem, 6vw, 5.4rem);
+      line-height: 0.92;
+      letter-spacing: -0.085em;
+      margin: 0;
+    }
+
+    .hero-copy {
+      color: var(--muted);
+      font-size: 1.05rem;
+      line-height: 1.65;
+      max-width: 510px;
+      margin: 0;
+    }
+
+    .hero-card {
+      background: rgba(255, 254, 250, 0.88);
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      padding: 22px;
+      box-shadow: var(--shadow);
+    }
+
+    .hero-card strong {
+      display: block;
+      font-size: 1.05rem;
+      margin-bottom: 8px;
+    }
+
+    .hero-card p {
+      color: var(--muted);
+      line-height: 1.55;
+      margin: 0;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 370px minmax(0, 1fr);
+      gap: 22px;
+      align-items: start;
+    }
+
+    .panel,
+    .idea-card,
+    .empty-state {
+      background: rgba(255, 254, 250, 0.94);
+      border: 1px solid var(--line);
+      border-radius: 26px;
+      box-shadow: 0 12px 32px rgba(14, 72, 70, 0.08);
+    }
+
+    .panel {
+      padding: 20px;
+      position: sticky;
+      top: 18px;
+    }
+
+    .panel h2,
+    .feed-head h2 {
+      margin: 0 0 6px;
+      letter-spacing: -0.04em;
+      font-size: 1.45rem;
+    }
+
+    .panel .hint,
+    .feed-head p {
+      margin: 0 0 18px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    label {
+      display: block;
+      color: var(--ink);
+      font-weight: 750;
+      margin: 16px 0 7px;
+      font-size: 0.92rem;
+    }
+
+    input,
+    textarea,
+    select {
+      width: 100%;
+      border: 1px solid #cfe0dc;
+      border-radius: 16px;
+      background: #fbfffd;
+      color: var(--ink);
+      padding: 12px 14px;
+      outline: none;
+      transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+    }
+
+    textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+
+    input:focus,
+    textarea:focus,
+    select:focus {
+      border-color: var(--teal);
+      box-shadow: 0 0 0 4px rgba(15, 143, 140, 0.13);
+      background: white;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .primary {
+      width: 100%;
+      margin-top: 18px;
+      border: 0;
+      border-radius: 999px;
+      padding: 13px 18px;
+      background: var(--teal);
+      color: white;
+      font-weight: 850;
+      box-shadow: 0 12px 20px rgba(15, 143, 140, 0.2);
+      transition: transform 0.18s ease, background 0.18s ease;
+    }
+
+    .primary:hover { background: var(--teal-dark); transform: translateY(-1px); }
+
+    .insights {
+      margin-top: 18px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .insight {
+      border-radius: 18px;
+      background: var(--wash);
+      border: 1px solid var(--line);
+      padding: 13px;
+    }
+
+    .insight span {
+      display: block;
+      color: var(--muted);
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      font-weight: 800;
+      margin-bottom: 3px;
+    }
+
+    .insight strong { font-size: 1.1rem; letter-spacing: -0.03em; }
+
+    .feed {
+      min-width: 0;
+    }
+
+    .feed-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      gap: 16px;
+      margin: 0 2px 14px;
+    }
+
+    .tools {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .tools select,
+    .ghost {
+      width: auto;
+      min-height: 42px;
+      border-radius: 999px;
+    }
+
+    .ghost {
+      border: 1px solid #ffd0c7;
+      background: var(--coral-soft);
+      color: var(--coral-dark);
+      padding: 9px 14px;
+      font-weight: 800;
+    }
+
+    .cards {
+      display: grid;
+      gap: 14px;
+    }
+
+    .idea-card {
+      padding: 18px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 18px;
+      animation: rise 0.24s ease both;
+    }
+
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      background: var(--teal-soft);
+      color: var(--teal-dark);
+      padding: 5px 9px;
+      font-size: 0.78rem;
+      font-weight: 800;
+    }
+
+    .pill.coral { background: var(--coral-soft); color: var(--coral-dark); }
+
+    .idea-card h3 {
+      margin: 0 0 8px;
+      font-size: 1.36rem;
+      letter-spacing: -0.045em;
+    }
+
+    .idea-card p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.58;
+    }
+
+    .judgement {
+      margin-top: 14px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .judgement span {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 6px 10px;
+      color: var(--muted);
+      font-size: 0.84rem;
+      background: #fbfffd;
+    }
+
+    .vote-box {
+      display: grid;
+      gap: 8px;
+      align-content: start;
+      min-width: 118px;
+    }
+
+    .vote {
+      border: 1px solid var(--line);
+      background: white;
+      border-radius: 16px;
+      padding: 10px 12px;
+      font-weight: 900;
+      color: var(--ink);
+      transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+    }
+
+    .vote:hover { transform: translateY(-1px); }
+    .vote.yes.active,
+    .vote.yes:hover { border-color: var(--teal); background: var(--teal-soft); color: var(--teal-dark); }
+    .vote.no.active,
+    .vote.no:hover { border-color: var(--coral); background: var(--coral-soft); color: var(--coral-dark); }
+
+    .score {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.86rem;
+      line-height: 1.4;
+    }
+
+    .score strong {
+      display: block;
+      color: var(--ink);
+      font-size: 1.45rem;
+      letter-spacing: -0.05em;
+    }
+
+    .delete {
+      border: 0;
+      background: transparent;
+      color: #9b6a62;
+      font-size: 0.8rem;
+      text-decoration: underline;
+      padding: 2px;
+    }
+
+    .empty-state {
+      padding: 36px 22px;
+      text-align: center;
+      color: var(--muted);
+    }
+
+    .empty-state strong {
+      display: block;
+      color: var(--ink);
+      font-size: 1.25rem;
+      margin-bottom: 6px;
+    }
+
+    @media (max-width: 860px) {
+      header,
+      .layout { grid-template-columns: 1fr; }
+      .panel { position: static; }
+      .feed-head { align-items: flex-start; flex-direction: column; }
+      .tools { justify-content: flex-start; }
+    }
+
+    @media (max-width: 560px) {
+      .shell { width: min(100% - 22px, 1120px); padding-top: 18px; }
+      .row,
+      .idea-card { grid-template-columns: 1fr; }
+      .vote-box { grid-template-columns: 1fr 1fr; }
+      .score,
+      .delete { grid-column: 1 / -1; }
+      h1 { font-size: clamp(2.3rem, 18vw, 4rem); }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <section>
+        <div class="brand"><span class="mark" aria-hidden="true"></span> Spur</div>
+        <p class="eyebrow">Less scrolling. More stories.</p>
+        <h1>Find the next thing worth doing.</h1>
+      </section>
+      <aside class="hero-card" aria-label="What Spur does">
+        <strong>For free-time adventurers</strong>
+        <p>Post activity ideas, vote yes or no, and let the crowd reveal which plans are fresh, easy to say yes to, or better left as rainy-day maybes.</p>
+      </aside>
+    </header>
+
+    <section class="layout">
+      <aside class="panel">
+        <h2>Post an idea</h2>
+        <p class="hint">Add something specific enough that another person could actually try it this week.</p>
+        <form id="ideaForm">
+          <label for="title">Activity</label>
+          <input id="title" name="title" maxlength="72" placeholder="Sunrise paddle and diner pancakes" required />
+
+          <label for="description">Why it could be memorable</label>
+          <textarea id="description" name="description" maxlength="260" placeholder="Catch the quiet water, then compare the best pancakes nearby." required></textarea>
+
+          <div class="row">
+            <div>
+              <label for="category">Mood</label>
+              <select id="category" name="category">
+                <option>Outdoors</option>
+                <option>Food</option>
+                <option>Creative</option>
+                <option>Night</option>
+                <option>Low-key</option>
+                <option>Wildcard</option>
+              </select>
+            </div>
+            <div>
+              <label for="effort">Effort</label>
+              <select id="effort" name="effort">
+                <option>Easy</option>
+                <option>Medium</option>
+                <option>Full send</option>
+              </select>
+            </div>
+          </div>
+
+          <button class="primary" type="submit">Add to the feed</button>
+        </form>
+
+        <div class="insights" aria-live="polite">
+          <div class="insight"><span>My voter type</span><strong id="userType">Still deciding</strong></div>
+          <div class="insight"><span>Top idea</span><strong id="topIdea">No votes yet</strong></div>
+          <div class="insight"><span>Feed pulse</span><strong id="feedPulse">Fresh start</strong></div>
+        </div>
+      </aside>
+
+      <section class="feed">
+        <div class="feed-head">
+          <div>
+            <h2>Idea feed</h2>
+            <p>Vote quickly. The app updates its read on each idea and on your taste.</p>
+          </div>
+          <div class="tools">
+            <select id="sortIdeas" aria-label="Sort ideas">
+              <option value="hot">Most yes</option>
+              <option value="new">Newest</option>
+              <option value="split">Most debated</option>
+            </select>
+            <button class="ghost" id="seedButton" type="button">Add sample ideas</button>
+          </div>
+        </div>
+        <div class="cards" id="ideaList"></div>
+      </section>
+    </section>
+  </main>
+
+  <template id="ideaTemplate">
+    <article class="idea-card">
+      <div>
+        <div class="meta"></div>
+        <h3></h3>
+        <p></p>
+        <div class="judgement"></div>
+      </div>
+      <div class="vote-box">
+        <button class="vote yes" type="button">Yes</button>
+        <button class="vote no" type="button">No</button>
+        <div class="score"></div>
+        <button class="delete" type="button">delete</button>
+      </div>
+    </article>
+  </template>
+
+  <script>
+    const STORAGE_KEY = "spurActivityIdeas.v1";
+    const VOTES_KEY = "spurActivityVotes.v1";
+
+    const starterIdeas = [
+      {
+        id: crypto.randomUUID(),
+        title: "Secret stairway walk with a snack stop",
+        description: "Find three public staircases in an older neighborhood, walk them before sunset, then end with tacos or ice cream.",
+        category: "Outdoors",
+        effort: "Easy",
+        createdAt: Date.now() - 300000,
+        yes: 8,
+        no: 2
+      },
+      {
+        id: crypto.randomUUID(),
+        title: "Thrift-store movie night",
+        description: "Everyone gets ten dollars to buy a ridiculous outfit and one mystery DVD. Wear the outfit while watching the winner.",
+        category: "Creative",
+        effort: "Easy",
+        createdAt: Date.now() - 180000,
+        yes: 6,
+        no: 4
+      },
+      {
+        id: crypto.randomUUID(),
+        title: "One-hour train stop challenge",
+        description: "Take transit to a stop you never use and spend exactly one hour finding the best photo, bite, and odd little detail.",
+        category: "Wildcard",
+        effort: "Medium",
+        createdAt: Date.now() - 90000,
+        yes: 11,
+        no: 3
+      }
+    ];
+
+    const ideaForm = document.querySelector("#ideaForm");
+    const ideaList = document.querySelector("#ideaList");
+    const template = document.querySelector("#ideaTemplate");
+    const sortIdeas = document.querySelector("#sortIdeas");
+    const seedButton = document.querySelector("#seedButton");
+    const userType = document.querySelector("#userType");
+    const topIdea = document.querySelector("#topIdea");
+    const feedPulse = document.querySelector("#feedPulse");
+
+    let ideas = load(STORAGE_KEY, starterIdeas);
+    let votes = load(VOTES_KEY, {});
+
+    function load(key, fallback) {
+      try {
+        const value = localStorage.getItem(key);
+        return value ? JSON.parse(value) : structuredClone(fallback);
+      } catch {
+        return structuredClone(fallback);
+      }
+    }
+
+    function save() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(ideas));
+      localStorage.setItem(VOTES_KEY, JSON.stringify(votes));
+    }
+
+    function escapeText(text) {
+      const element = document.createElement("span");
+      element.textContent = text;
+      return element.innerHTML;
+    }
+
+    function ideaScore(idea) {
+      return idea.yes - idea.no;
+    }
+
+    function approvalRate(idea) {
+      const total = idea.yes + idea.no;
+      return total ? Math.round((idea.yes / total) * 100) : 0;
+    }
+
+    function judgementFor(idea) {
+      const total = idea.yes + idea.no;
+      const approval = approvalRate(idea);
+      const tags = [];
+
+      if (total < 3) tags.push("Needs more votes");
+      else if (approval >= 75) tags.push("Crowd says: go");
+      else if (approval <= 35) tags.push("Niche taste");
+      else tags.push("Divisive in a good way");
+
+      if (idea.effort === "Easy" && approval >= 60) tags.push("Low-friction win");
+      if (idea.effort === "Full send" && approval >= 60) tags.push("Big memory energy");
+      if (idea.no > idea.yes) tags.push("May need a twist");
+
+      return tags;
+    }
+
+    function getSortedIdeas() {
+      return [...ideas].sort((a, b) => {
+        if (sortIdeas.value === "new") return b.createdAt - a.createdAt;
+        if (sortIdeas.value === "split") return Math.abs(approvalRate(a) - 50) - Math.abs(approvalRate(b) - 50);
+        return b.yes - a.yes || ideaScore(b) - ideaScore(a) || b.createdAt - a.createdAt;
+      });
+    }
+
+    function render() {
+      ideaList.innerHTML = "";
+      const sortedIdeas = getSortedIdeas();
+
+      if (!sortedIdeas.length) {
+        ideaList.innerHTML = '<div class="empty-state"><strong>No ideas yet.</strong>Post the first plan someone can say yes to.</div>';
+      }
+
+      sortedIdeas.forEach((idea) => {
+        const node = template.content.cloneNode(true);
+        const article = node.querySelector("article");
+        const meta = node.querySelector(".meta");
+        const title = node.querySelector("h3");
+        const description = node.querySelector("p");
+        const judgement = node.querySelector(".judgement");
+        const yesButton = node.querySelector(".yes");
+        const noButton = node.querySelector(".no");
+        const score = node.querySelector(".score");
+        const deleteButton = node.querySelector(".delete");
+
+        article.dataset.id = idea.id;
+        meta.innerHTML = `<span class="pill">${escapeText(idea.category)}</span><span class="pill coral">${escapeText(idea.effort)}</span>`;
+        title.textContent = idea.title;
+        description.textContent = idea.description;
+        judgement.innerHTML = judgementFor(idea).map((tag) => `<span>${escapeText(tag)}</span>`).join("");
+        score.innerHTML = `<strong>${approvalRate(idea)}%</strong>${idea.yes} yes · ${idea.no} no`;
+        yesButton.classList.toggle("active", votes[idea.id] === "yes");
+        noButton.classList.toggle("active", votes[idea.id] === "no");
+        yesButton.addEventListener("click", () => vote(idea.id, "yes"));
+        noButton.addEventListener("click", () => vote(idea.id, "no"));
+        deleteButton.addEventListener("click", () => removeIdea(idea.id));
+        ideaList.appendChild(node);
+      });
+
+      updateInsights();
+    }
+
+    function vote(id, choice) {
+      const idea = ideas.find((item) => item.id === id);
+      if (!idea) return;
+
+      const previous = votes[id];
+      if (previous === choice) {
+        idea[choice] -= 1;
+        delete votes[id];
+      } else {
+        if (previous) idea[previous] -= 1;
+        idea[choice] += 1;
+        votes[id] = choice;
+      }
+
+      save();
+      render();
+    }
+
+    function removeIdea(id) {
+      ideas = ideas.filter((idea) => idea.id !== id);
+      delete votes[id];
+      save();
+      render();
+    }
+
+    function updateInsights() {
+      const personalVotes = Object.values(votes);
+      const yesVotes = personalVotes.filter((voteValue) => voteValue === "yes").length;
+      const noVotes = personalVotes.length - yesVotes;
+      const bestIdea = [...ideas].sort((a, b) => approvalRate(b) - approvalRate(a) || b.yes - a.yes)[0];
+      const averageApproval = ideas.length
+        ? Math.round(ideas.reduce((sum, idea) => sum + approvalRate(idea), 0) / ideas.length)
+        : 0;
+
+      if (!personalVotes.length) userType.textContent = "Still deciding";
+      else if (yesVotes / personalVotes.length >= 0.7) userType.textContent = "Adventure magnet";
+      else if (noVotes / personalVotes.length >= 0.7) userType.textContent = "Sharp curator";
+      else userType.textContent = "Balanced scout";
+
+      topIdea.textContent = bestIdea ? `${bestIdea.title} (${approvalRate(bestIdea)}%)` : "No votes yet";
+      feedPulse.textContent = ideas.length ? `${ideas.length} ideas · ${averageApproval}% average yes` : "Fresh start";
+    }
+
+    ideaForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const formData = new FormData(ideaForm);
+      ideas.unshift({
+        id: crypto.randomUUID(),
+        title: formData.get("title").trim(),
+        description: formData.get("description").trim(),
+        category: formData.get("category"),
+        effort: formData.get("effort"),
+        createdAt: Date.now(),
+        yes: 0,
+        no: 0
+      });
+      ideaForm.reset();
+      save();
+      render();
+    });
+
+    sortIdeas.addEventListener("change", render);
+
+    seedButton.addEventListener("click", () => {
+      const existingTitles = new Set(ideas.map((idea) => idea.title));
+      const additions = starterIdeas
+        .filter((idea) => !existingTitles.has(idea.title))
+        .map((idea) => ({ ...idea, id: crypto.randomUUID(), createdAt: Date.now() - Math.floor(Math.random() * 500000) }));
+      ideas = [...additions, ...ideas];
+      save();
+      render();
+    });
+
+    render();
+  </script>
 </body>
 </html>

@@ -1,12 +1,16 @@
-// Duplicate-safe boot flag; keep declarations redeclarable so bad merges do not hard-crash.
-var ideappShouldBoot = !globalThis.__ideappInitialized;
+// Guard against duplicate script execution after conflict resolution.
+if (!globalThis.__ideappInitialized) {
+(function initIdeapp() {
+if (globalThis.__ideappInitialized) return;
+ideappBoot: {
+if (globalThis.__ideappInitialized) break ideappBoot;
 globalThis.__ideappInitialized = true;
 
-var STORAGE_KEY = "ideappActivityIdeas.v1";
-var VOTES_KEY = "ideappActivityVotes.v1";
-var SWIPE_THRESHOLD = 96;
+const STORAGE_KEY = "ideappActivityIdeas.v1";
+const VOTES_KEY = "ideappActivityVotes.v1";
+const SWIPE_THRESHOLD = 96;
 
-var starterIdeas = [
+const starterIdeas = [
   {
     id: crypto.randomUUID(),
     title: "Secret stairway snack walk",
@@ -49,22 +53,22 @@ var starterIdeas = [
   }
 ];
 
-var ideaFeed = document.querySelector("#ideaFeed");
-var ideaTemplate = document.querySelector("#ideaTemplate");
-var sortIdeas = document.querySelector("#sortIdeas");
-var yesButton = document.querySelector("#yesButton");
-var noButton = document.querySelector("#noButton");
-var seedButton = document.querySelector("#seedButton");
-var openComposer = document.querySelector("#openComposer");
-var closeComposer = document.querySelector("#closeComposer");
-var composerDialog = document.querySelector("#composerDialog");
-var ideaForm = document.querySelector("#ideaForm");
-var userType = document.querySelector("#userType");
-var feedPulse = document.querySelector("#feedPulse");
+const ideaFeed = document.querySelector("#ideaFeed");
+const ideaTemplate = document.querySelector("#ideaTemplate");
+const sortIdeas = document.querySelector("#sortIdeas");
+const yesButton = document.querySelector("#yesButton");
+const noButton = document.querySelector("#noButton");
+const seedButton = document.querySelector("#seedButton");
+const openComposer = document.querySelector("#openComposer");
+const closeComposer = document.querySelector("#closeComposer");
+const composerDialog = document.querySelector("#composerDialog");
+const ideaForm = document.querySelector("#ideaForm");
+const userType = document.querySelector("#userType");
+const feedPulse = document.querySelector("#feedPulse");
 
-var ideas = load(STORAGE_KEY, starterIdeas);
-var votes = load(VOTES_KEY, {});
-var currentIdeaId = null;
+let ideas = load(STORAGE_KEY, starterIdeas);
+let votes = load(VOTES_KEY, {});
+let currentIdeaId = null;
 
 function load(key, fallback) {
   try {
@@ -319,13 +323,13 @@ function openComposerDialog() {
   }
 }
 
-ideappShouldBoot && openComposer.addEventListener("click", openComposerDialog);
-ideappShouldBoot && closeComposer.addEventListener("click", () => composerDialog.close());
-ideappShouldBoot && yesButton.addEventListener("click", () => voteCurrent("yes"));
-ideappShouldBoot && noButton.addEventListener("click", () => voteCurrent("no"));
-ideappShouldBoot && sortIdeas.addEventListener("change", render);
+openComposer.addEventListener("click", openComposerDialog);
+closeComposer.addEventListener("click", () => composerDialog.close());
+yesButton.addEventListener("click", () => voteCurrent("yes"));
+noButton.addEventListener("click", () => voteCurrent("no"));
+sortIdeas.addEventListener("change", render);
 
-ideappShouldBoot && seedButton.addEventListener("click", () => {
+seedButton.addEventListener("click", () => {
   const existingTitles = new Set(ideas.map((idea) => idea.title));
   const additions = starterIdeas
     .filter((idea) => !existingTitles.has(idea.title))
@@ -336,7 +340,7 @@ ideappShouldBoot && seedButton.addEventListener("click", () => {
   render();
 });
 
-ideappShouldBoot && ideaForm.addEventListener("submit", (event) => {
+ideaForm.addEventListener("submit", (event) => {
   event.preventDefault();
   const formData = new FormData(ideaForm);
   const description = formData.get("description").trim();
@@ -359,10 +363,12 @@ ideappShouldBoot && ideaForm.addEventListener("submit", (event) => {
   ideaFeed.scrollTo({ top: 0, behavior: "smooth" });
 });
 
-ideappShouldBoot && window.addEventListener("keydown", (event) => {
+window.addEventListener("keydown", (event) => {
   if (event.key === "ArrowRight") voteCurrent("yes");
   if (event.key === "ArrowLeft") voteCurrent("no");
   if (event.key.toLowerCase() === "n") openComposerDialog();
 });
 
-ideappShouldBoot && render();
+render();
+})();
+}
