@@ -161,7 +161,7 @@ button { border: 0; }
   font-size: clamp(3rem, 18vw, 14rem);
   font-weight: 950;
   letter-spacing: 0.04em;
-  transition: width 180ms ease, opacity 180ms ease;
+  transition: width 380ms cubic-bezier(0.22, 1, 0.36, 1), opacity 380ms ease;
 }
 
 .vote-field-yes { background: linear-gradient(135deg, rgba(0, 145, 88, 0.82), rgba(25, 200, 140, 0.72)); }
@@ -184,6 +184,12 @@ button { border: 0; }
 
 .idea-slide[data-preview="no"] .vote-field-no,
 .idea-slide[data-vote="no"] .vote-field-no { width: 100%; }
+
+.idea-slide[data-preview="clear"] .vote-field-yes,
+.idea-slide[data-preview="clear"] .vote-field-no {
+  width: 50%;
+  opacity: 1;
+}
 
 .idea-backdrop {
   position: absolute;
