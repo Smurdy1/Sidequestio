@@ -168,7 +168,10 @@ button { border: 0; }
 .vote-field-no { background: linear-gradient(135deg, rgba(239, 51, 51, 0.78), rgba(159, 16, 38, 0.78)); }
 
 .idea-slide[data-preview="yes"] .vote-field-yes,
-.idea-slide[data-vote="yes"] .vote-field-yes { width: 100%; }
+.idea-slide[data-vote="yes"] .vote-field-yes {
+  width: 100%;
+  opacity: 1;
+}
 
 .idea-slide[data-preview="yes"] .vote-field-no,
 .idea-slide[data-vote="yes"] .vote-field-no {
@@ -183,7 +186,10 @@ button { border: 0; }
 }
 
 .idea-slide[data-preview="no"] .vote-field-no,
-.idea-slide[data-vote="no"] .vote-field-no { width: 100%; }
+.idea-slide[data-vote="no"] .vote-field-no {
+  width: 100%;
+  opacity: 1;
+}
 
 .idea-slide[data-preview="clear"] .vote-field-yes,
 .idea-slide[data-preview="clear"] .vote-field-no {
