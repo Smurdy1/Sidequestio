@@ -1,9 +1,9 @@
 // Duplicate-safe boot flag; keep declarations redeclarable so bad merges do not hard-crash.
-var ideappShouldBoot = !globalThis.__ideappInitialized;
-globalThis.__ideappInitialized = true;
+var sidequestioShouldBoot = !globalThis.__sidequestioInitialized;
+globalThis.__sidequestioInitialized = true;
 
-var STORAGE_KEY = "ideappActivityIdeas.v1";
-var VOTES_KEY = "ideappActivityVotes.v1";
+var STORAGE_KEY = "sidequestioActivityIdeas.v1";
+var VOTES_KEY = "sidequestioActivityVotes.v1";
 var SWIPE_THRESHOLD = 120;
 var CLEAR_VOTE_THRESHOLD = 34;
 var VOTE_ANIMATION_MS = 380;
@@ -218,7 +218,7 @@ function appendIdeaSlide(idea) {
   const newMarker = node.querySelector(".new-marker");
 
   if (!slide || !tags || !title || !description || !approval || !counts) {
-    console.error("Ideapp idea template is missing required elements.");
+    console.error("Sidequestio idea template is missing required elements.");
     return;
   }
 
@@ -516,21 +516,21 @@ function maybeExtendFeed() {
   syncCurrentSlide();
 }
 
-ideappShouldBoot && ideaFeed.addEventListener("scroll", maybeExtendFeed);
-ideappShouldBoot && tagGroups.addEventListener("click", (event) => {
+sidequestioShouldBoot && ideaFeed.addEventListener("scroll", maybeExtendFeed);
+sidequestioShouldBoot && tagGroups.addEventListener("click", (event) => {
   const button = event.target.closest("[data-tag]");
   if (button) toggleTag(button.dataset.tag);
 });
-ideappShouldBoot && selectedTagList.addEventListener("click", (event) => {
+sidequestioShouldBoot && selectedTagList.addEventListener("click", (event) => {
   const button = event.target.closest("[data-selected-tag]");
   if (button) toggleTag(button.dataset.selectedTag);
 });
-ideappShouldBoot && addCustomTag.addEventListener("click", () => {
+sidequestioShouldBoot && addCustomTag.addEventListener("click", () => {
   toggleTag(customTag.value);
   customTag.value = "";
   customTag.classList.add("used");
 });
-ideappShouldBoot && customTag.addEventListener("keydown", (event) => {
+sidequestioShouldBoot && customTag.addEventListener("keydown", (event) => {
   if (event.key === "Enter") {
     event.preventDefault();
     toggleTag(customTag.value);
@@ -538,17 +538,17 @@ ideappShouldBoot && customTag.addEventListener("keydown", (event) => {
     customTag.classList.add("used");
   }
 });
-ideappShouldBoot && openComposer.addEventListener("click", openComposerDialog);
-ideappShouldBoot && closeComposer.addEventListener("click", () => composerDialog.close());
-ideappShouldBoot && yesButton.addEventListener("click", () => voteCurrent("yes"));
-ideappShouldBoot && noButton.addEventListener("click", () => voteCurrent("no"));
-ideappShouldBoot && undoButton.addEventListener("click", undoLastVote);
-ideappShouldBoot && copyButton.addEventListener("click", copyCurrentIdea);
-ideappShouldBoot && titleInput.addEventListener("input", () => updateCharacterWarning(titleInput, titleWarning, 10));
-ideappShouldBoot && descriptionInput.addEventListener("input", () => updateCharacterWarning(descriptionInput, descriptionWarning, 40));
-ideappShouldBoot && sortIdeas.addEventListener("change", render);
+sidequestioShouldBoot && openComposer.addEventListener("click", openComposerDialog);
+sidequestioShouldBoot && closeComposer.addEventListener("click", () => composerDialog.close());
+sidequestioShouldBoot && yesButton.addEventListener("click", () => voteCurrent("yes"));
+sidequestioShouldBoot && noButton.addEventListener("click", () => voteCurrent("no"));
+sidequestioShouldBoot && undoButton.addEventListener("click", undoLastVote);
+sidequestioShouldBoot && copyButton.addEventListener("click", copyCurrentIdea);
+sidequestioShouldBoot && titleInput.addEventListener("input", () => updateCharacterWarning(titleInput, titleWarning, 10));
+sidequestioShouldBoot && descriptionInput.addEventListener("input", () => updateCharacterWarning(descriptionInput, descriptionWarning, 40));
+sidequestioShouldBoot && sortIdeas.addEventListener("change", render);
 
-ideappShouldBoot && ideaForm.addEventListener("submit", (event) => {
+sidequestioShouldBoot && ideaForm.addEventListener("submit", (event) => {
   event.preventDefault();
   const formData = new FormData(ideaForm);
   const description = formData.get("description").trim();
@@ -578,7 +578,7 @@ ideappShouldBoot && ideaForm.addEventListener("submit", (event) => {
   ideaFeed.scrollTo({ top: 0, behavior: "smooth" });
 });
 
-ideappShouldBoot && window.addEventListener("keydown", (event) => {
+sidequestioShouldBoot && window.addEventListener("keydown", (event) => {
   const isTyping = ["INPUT", "TEXTAREA", "SELECT"].includes(event.target.tagName) || event.target.isContentEditable;
   if (isTyping || composerDialog.open) return;
 
@@ -595,4 +595,4 @@ ideappShouldBoot && window.addEventListener("keydown", (event) => {
 syncTagInputs();
 updateCharacterWarning(titleInput, titleWarning, 10);
 updateCharacterWarning(descriptionInput, descriptionWarning, 40);
-ideappShouldBoot && render();
+sidequestioShouldBoot && render();
