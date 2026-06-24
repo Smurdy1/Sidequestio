@@ -26,6 +26,24 @@ var SidequestioApi = (() => {
     return data.user;
   }
 
+  async function getProfile() {
+    const user = await ensureUser();
+    const { data, error } = await client.from("profiles").select("id, display_name").eq("id", user.id).maybeSingle();
+    if (error) throw error;
+    return data;
+  }
+
+  async function saveProfile(displayName) {
+    const user = await ensureUser();
+    const cleanName = displayName.trim().replace(/\s+/g, " ").slice(0, 18);
+    const { data, error } = await client.from("profiles").upsert({
+      id: user.id,
+      display_name: cleanName
+    }, { onConflict: "id" }).select("id, display_name").single();
+    if (error) throw error;
+    return data;
+  }
+
   async function getIdeas(sort = "hot") {
     let query = client.from("ideas_with_counts").select("*").eq("status", "active").limit(60);
     if (sort === "new") query = query.order("created_at", { ascending: false });
@@ -82,12 +100,15 @@ var SidequestioApi = (() => {
       effort: row.tags?.[1] || "Low effort",
       tags: Array.isArray(row.tags) ? row.tags : [],
       createdAt: new Date(row.created_at).getTime(),
+      userId: row.user_id || "",
+      authorName: row.author_name || "guest",
+      isMine: Boolean(row.is_mine),
       yes: Number(row.yes_count || 0),
       no: Number(row.no_count || 0)
     };
   }
 
-  return { client, ensureUser, getIdeas, getMyVotes, createIdea, setVote };
+  return { client, ensureUser, getProfile, saveProfile, getIdeas, getMyVotes, createIdea, setVote };
 })();
 
 globalThis.SidequestioApi = SidequestioApi;

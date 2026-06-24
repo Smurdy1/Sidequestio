@@ -15,6 +15,7 @@ var selectedTagSet = new Set();
 var lastVote = null;
 var remoteReady = false;
 var remoteLoadFailed = false;
+var currentProfile = null;
 var suggestedTags = new Set(["Outdoors", "Food", "Creative", "Night", "Cozy", "Adrenaline", "10 minutes", "Low effort", "All day", "Plan ahead", "No money", "Road trip", "Solo", "Date", "Friends", "Family"]);
 
 var starterIdeas = [
@@ -71,6 +72,7 @@ var yesButton = document.querySelector("#yesButton");
 var noButton = document.querySelector("#noButton");
 var undoButton = document.querySelector("#undoButton");
 var copyButton = document.querySelector("#copyButton");
+var profileButton = document.querySelector("#profileButton");
 var openComposer = document.querySelector("#openComposer");
 var closeComposer = document.querySelector("#closeComposer");
 var composerDialog = document.querySelector("#composerDialog");
@@ -87,6 +89,11 @@ var selectedTagList = document.querySelector("#selectedTagList");
 var tagCount = document.querySelector("#tagCount");
 var tagLimit = document.querySelector("#tagLimit");
 var tagWarning = document.querySelector("#tagWarning");
+var profileDialog = document.querySelector("#profileDialog");
+var profileForm = document.querySelector("#profileForm");
+var closeProfile = document.querySelector("#closeProfile");
+var displayNameInput = document.querySelector("#displayName");
+var profileWarning = document.querySelector("#profileWarning");
 
 var ideas = load(STORAGE_KEY, starterIdeas);
 var votes = load(VOTES_KEY, {});
@@ -122,14 +129,18 @@ async function loadRemoteState() {
 
   try {
     await globalThis.SidequestioApi.ensureUser();
-    const [remoteIdeas, remoteVotes] = await Promise.all([
+    const [profile, remoteIdeas, remoteVotes] = await Promise.all([
+      globalThis.SidequestioApi.getProfile(),
       globalThis.SidequestioApi.getIdeas(sortIdeas.value),
       globalThis.SidequestioApi.getMyVotes()
     ]);
+    currentProfile = profile;
     ideas = remoteIdeas;
     votes = remoteVotes;
     remoteReady = true;
     remoteLoadFailed = false;
+    updateProfileUi();
+    maybePromptForProfile();
     save();
     render();
     return true;
@@ -286,6 +297,7 @@ function appendIdeaSlide(idea) {
   const counts = node.querySelector(".counts");
   const hint = node.querySelector(".vote-hint");
   const newMarker = node.querySelector(".new-marker");
+  const authorLine = node.querySelector(".author-line");
 
   if (!slide || !tags || !title || !description || !approval || !counts) {
     console.error("Sidequestio idea template is missing required elements.");
@@ -296,6 +308,7 @@ function appendIdeaSlide(idea) {
   slide.tabIndex = 0;
   if (hint && !ideaFeed.children.length) hint.hidden = false;
   if (newMarker && Date.now() - idea.createdAt < DAY_MS) newMarker.hidden = false;
+  if (authorLine) authorLine.textContent = authorLabel(idea);
   slide.dataset.vote = votes[idea.id] || "";
   tags.innerHTML = ideaTags(idea).map((tag, index) => {
     const classes = ["tag"];
@@ -311,6 +324,63 @@ function appendIdeaSlide(idea) {
   attachSwipeHandlers(slide);
   ideaFeed.appendChild(node);
 }
+function authorLabel(idea) {
+  const name = idea.authorName || "guest";
+  return idea.isMine ? `@${name} · yours` : `@${name}`;
+}
+
+function profileDisplayName(profile = currentProfile) {
+  return profile?.display_name || "guest";
+}
+
+function updateProfileUi() {
+  if (profileButton) profileButton.textContent = `@${profileDisplayName()}`;
+  if (displayNameInput) displayNameInput.value = currentProfile?.display_name || "";
+}
+
+function openProfileDialog(force = false) {
+  if (!profileDialog) return;
+  updateProfileUi();
+  if (force) profileDialog.dataset.required = "true";
+  else delete profileDialog.dataset.required;
+  if (typeof profileDialog.showModal === "function") profileDialog.showModal();
+  else profileDialog.setAttribute("open", "");
+  setTimeout(() => displayNameInput?.focus(), 60);
+}
+
+function closeProfileDialog() {
+  if (profileDialog?.dataset.required === "true" && !currentProfile) return;
+  profileDialog?.close();
+}
+
+function maybePromptForProfile() {
+  if (currentProfile || !remoteReady || profileDialog?.open) return;
+  openProfileDialog(true);
+}
+
+async function saveProfileFromForm() {
+  const name = (displayNameInput?.value || "").trim().replace(/\s+/g, " ");
+  if (!name) {
+    if (profileWarning) profileWarning.textContent = "Add a display name first";
+    return;
+  }
+  if (!globalThis.SidequestioApi) {
+    if (profileWarning) profileWarning.textContent = "Profiles need Supabase setup";
+    return;
+  }
+  try {
+    const profile = await globalThis.SidequestioApi.saveProfile(name);
+    currentProfile = profile;
+    if (profileWarning) profileWarning.textContent = "";
+    updateProfileUi();
+    profileDialog?.close();
+    await loadRemoteState();
+  } catch (error) {
+    console.warn("Sidequestio could not save this profile.", error);
+    if (profileWarning) profileWarning.textContent = "Could not save profile yet. Check Supabase setup.";
+  }
+}
+
 function escapeText(text) {
   const element = document.createElement("span");
   element.textContent = text;
@@ -610,8 +680,10 @@ sidequestioShouldBoot && customTag.addEventListener("keydown", (event) => {
     customTag.classList.add("used");
   }
 });
+sidequestioShouldBoot && profileButton.addEventListener("click", () => openProfileDialog(false));
 sidequestioShouldBoot && openComposer.addEventListener("click", openComposerDialog);
 sidequestioShouldBoot && closeComposer.addEventListener("click", () => composerDialog.close());
+sidequestioShouldBoot && closeProfile.addEventListener("click", closeProfileDialog);
 sidequestioShouldBoot && yesButton.addEventListener("click", () => voteCurrent("yes"));
 sidequestioShouldBoot && noButton.addEventListener("click", () => voteCurrent("no"));
 sidequestioShouldBoot && undoButton.addEventListener("click", undoLastVote);
@@ -619,6 +691,11 @@ sidequestioShouldBoot && copyButton.addEventListener("click", copyCurrentIdea);
 sidequestioShouldBoot && titleInput.addEventListener("input", () => updateCharacterWarning(titleInput, titleWarning, 10));
 sidequestioShouldBoot && descriptionInput.addEventListener("input", () => updateCharacterWarning(descriptionInput, descriptionWarning, 40));
 sidequestioShouldBoot && sortIdeas.addEventListener("change", refreshFeed);
+
+sidequestioShouldBoot && profileForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  await saveProfileFromForm();
+});
 
 sidequestioShouldBoot && ideaForm.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -681,4 +758,5 @@ sidequestioShouldBoot && window.addEventListener("keydown", (event) => {
 syncTagInputs();
 updateCharacterWarning(titleInput, titleWarning, 10);
 updateCharacterWarning(descriptionInput, descriptionWarning, 40);
+updateProfileUi();
 sidequestioShouldBoot && refreshFeed();
