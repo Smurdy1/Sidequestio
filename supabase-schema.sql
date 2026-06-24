@@ -29,7 +29,11 @@ create table if not exists public.votes (
   unique (idea_id, user_id)
 );
 
-create or replace view public.ideas_with_counts
+-- Drop the old view before recreating it because Postgres cannot insert new
+-- columns into the middle of an existing view with CREATE OR REPLACE VIEW.
+drop view if exists public.ideas_with_counts;
+
+create view public.ideas_with_counts
 with (security_invoker = true) as
 select
   i.id,
