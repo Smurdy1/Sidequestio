@@ -13,6 +13,8 @@ var DAY_MS = 24 * 60 * 60 * 1000;
 var renderedOrder = [];
 var selectedTagSet = new Set();
 var lastVote = null;
+var remoteReady = false;
+var remoteLoadFailed = false;
 var suggestedTags = new Set(["Outdoors", "Food", "Creative", "Night", "Cozy", "Adrenaline", "10 minutes", "Low effort", "All day", "Plan ahead", "No money", "Road trip", "Solo", "Date", "Friends", "Family"]);
 
 var starterIdeas = [
@@ -88,6 +90,7 @@ var tagWarning = document.querySelector("#tagWarning");
 
 var ideas = load(STORAGE_KEY, starterIdeas);
 var votes = load(VOTES_KEY, {});
+var pendingVoteSyncs = new Map();
 var currentIdeaId = null;
 var currentSlide = null;
 if (tagLimit) tagLimit.textContent = TAG_LIMIT;
@@ -112,6 +115,73 @@ function sortedIdeas() {
     if (sortIdeas.value === "split") return Math.abs(approvalRate(a) - 50) - Math.abs(approvalRate(b) - 50);
     return b.yes - a.yes || score(b) - score(a) || b.createdAt - a.createdAt;
   });
+}
+
+async function loadRemoteState() {
+  if (!globalThis.SidequestioApi) return false;
+
+  try {
+    await globalThis.SidequestioApi.ensureUser();
+    const [remoteIdeas, remoteVotes] = await Promise.all([
+      globalThis.SidequestioApi.getIdeas(sortIdeas.value),
+      globalThis.SidequestioApi.getMyVotes()
+    ]);
+    ideas = remoteIdeas;
+    votes = remoteVotes;
+    remoteReady = true;
+    remoteLoadFailed = false;
+    save();
+    render();
+    return true;
+  } catch (error) {
+    remoteReady = false;
+    remoteLoadFailed = true;
+    console.warn("Sidequestio could not reach Supabase yet; using local demo data.", error);
+    return false;
+  }
+}
+
+async function refreshFeed() {
+  const loadedRemote = await loadRemoteState();
+  if (!loadedRemote) render();
+}
+
+async function createRemoteIdea(payload) {
+  if (!remoteReady || !globalThis.SidequestioApi) return false;
+  await globalThis.SidequestioApi.createIdea(payload);
+  await loadRemoteState();
+  return true;
+}
+
+function syncVoteToRemote(id, nextVote, previousVote) {
+  if (!remoteReady || !globalThis.SidequestioApi) return;
+  const syncToken = crypto.randomUUID();
+  pendingVoteSyncs.set(id, syncToken);
+  globalThis.SidequestioApi.setVote(id, nextVote)
+    .catch((error) => {
+      if (pendingVoteSyncs.get(id) !== syncToken) return;
+      console.warn("Sidequestio could not save this vote to Supabase.", error);
+      restoreVoteAfterFailedSync(id, previousVote);
+    })
+    .finally(() => {
+      if (pendingVoteSyncs.get(id) === syncToken) pendingVoteSyncs.delete(id);
+    });
+}
+
+function restoreVoteAfterFailedSync(id, previousVote) {
+  const idea = ideas.find((item) => item.id === id);
+  if (!idea) return;
+  const current = votes[id];
+  if (current) idea[current] -= 1;
+  if (previousVote) {
+    idea[previousVote] += 1;
+    votes[id] = previousVote;
+  } else {
+    delete votes[id];
+  }
+  save();
+  updateSlideCounts(id);
+  updateActionStates();
 }
 
 function score(idea) {
@@ -391,6 +461,7 @@ function vote(id, choice, votedSlide = null) {
   }
 
   save();
+  syncVoteToRemote(id, votes[id] || null, previous);
   updateSlideCounts(id);
   updateActionStates();
 }
@@ -411,6 +482,7 @@ function undoLastVote() {
   }
 
   save();
+  syncVoteToRemote(undoTarget.id, votes[undoTarget.id] || null, current);
   updateSlideCounts(undoTarget.id);
   scrollToUndoneSlide(undoTarget);
   lastVote = null;
@@ -546,9 +618,9 @@ sidequestioShouldBoot && undoButton.addEventListener("click", undoLastVote);
 sidequestioShouldBoot && copyButton.addEventListener("click", copyCurrentIdea);
 sidequestioShouldBoot && titleInput.addEventListener("input", () => updateCharacterWarning(titleInput, titleWarning, 10));
 sidequestioShouldBoot && descriptionInput.addEventListener("input", () => updateCharacterWarning(descriptionInput, descriptionWarning, 40));
-sidequestioShouldBoot && sortIdeas.addEventListener("change", render);
+sidequestioShouldBoot && sortIdeas.addEventListener("change", refreshFeed);
 
-sidequestioShouldBoot && ideaForm.addEventListener("submit", (event) => {
+sidequestioShouldBoot && ideaForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const formData = new FormData(ideaForm);
   const description = formData.get("description").trim();
@@ -558,24 +630,38 @@ sidequestioShouldBoot && ideaForm.addEventListener("submit", (event) => {
     return;
   }
 
-  ideas.unshift({
-    id: crypto.randomUUID(),
+  const payload = {
     title: formData.get("title").trim(),
     description,
-    category: tags[0] || "Wildcard",
-    effort: tags[1] || "Low effort",
-    tags,
-    createdAt: Date.now(),
-    yes: 0,
-    no: 0
-  });
+    tags
+  };
 
-  ideaForm.reset();
-  resetTagPicker();
-  composerDialog.close();
-  save();
-  render();
-  ideaFeed.scrollTo({ top: 0, behavior: "smooth" });
+  try {
+    const postedRemote = await createRemoteIdea(payload);
+    if (!postedRemote) {
+      ideas.unshift({
+        id: crypto.randomUUID(),
+        title: payload.title,
+        description: payload.description,
+        category: tags[0] || "Wildcard",
+        effort: tags[1] || "Low effort",
+        tags,
+        createdAt: Date.now(),
+        yes: 0,
+        no: 0
+      });
+      save();
+      render();
+    }
+
+    ideaForm.reset();
+    resetTagPicker();
+    composerDialog.close();
+    ideaFeed.scrollTo({ top: 0, behavior: "smooth" });
+  } catch (error) {
+    console.warn("Sidequestio could not post to Supabase.", error);
+    if (tagWarning) tagWarning.textContent = "Could not post yet. Check Supabase setup.";
+  }
 });
 
 sidequestioShouldBoot && window.addEventListener("keydown", (event) => {
@@ -595,4 +681,4 @@ sidequestioShouldBoot && window.addEventListener("keydown", (event) => {
 syncTagInputs();
 updateCharacterWarning(titleInput, titleWarning, 10);
 updateCharacterWarning(descriptionInput, descriptionWarning, 40);
-sidequestioShouldBoot && render();
+sidequestioShouldBoot && refreshFeed();
