@@ -60,6 +60,7 @@ button { border: 0; }
 .brand,
 .top-actions,
 .profile-chip,
+.account-chip,
 .action-button { pointer-events: auto; }
 
 .brand {
@@ -812,4 +813,77 @@ textarea:focus,
 .report-options input {
   width: auto;
   accent-color: var(--red);
+}
+
+.account-chip {
+  min-height: 42px;
+  border: 1px solid var(--glass-line);
+  border-radius: 999px;
+  padding: 0 13px;
+  background: rgba(255, 249, 239, 0.9);
+  color: var(--ink);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.18);
+  font-size: 0.86rem;
+  font-weight: 900;
+  letter-spacing: 0.025em;
+}
+
+.account-dialog {
+  width: min(500px, calc(100% - 22px));
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 30px;
+  padding: 0;
+  background: rgba(255, 249, 239, 0.97);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+}
+
+.account-dialog::backdrop {
+  background: rgba(3, 20, 20, 0.68);
+  backdrop-filter: blur(8px);
+}
+
+.account-dialog form { padding: 18px; }
+.account-dialog .micro-label { color: var(--red-deep); }
+.account-dialog h1 {
+  margin: 2px 0 0;
+  font-size: clamp(2rem, 7vw, 3.5rem);
+  line-height: 0.92;
+  letter-spacing: -0.045em;
+}
+
+.account-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.secondary-button,
+.text-button {
+  border-radius: 999px;
+  font-weight: 950;
+  letter-spacing: 0.04em;
+}
+
+.secondary-button {
+  background: rgba(16, 40, 39, 0.1);
+  color: var(--ink);
+  padding: 12px 14px;
+}
+
+.text-button {
+  width: 100%;
+  margin-top: 10px;
+  background: transparent;
+  color: var(--red-deep);
+  padding: 9px 12px;
+}
+
+@media (max-width: 560px) {
+  .account-chip {
+    padding: 0 10px;
+    font-size: 0.78rem;
+  }
 }

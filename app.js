@@ -16,6 +16,7 @@ var lastVote = null;
 var remoteReady = false;
 var remoteLoadFailed = false;
 var currentProfile = null;
+var currentUser = null;
 var suggestedTags = new Set(["Outdoors", "Food", "Creative", "Night", "Cozy", "Adrenaline", "10 minutes", "Low effort", "All day", "Plan ahead", "No money", "Road trip", "Solo", "Date", "Friends", "Family"]);
 
 var starterIdeas = [
@@ -74,6 +75,7 @@ var undoButton = document.querySelector("#undoButton");
 var copyButton = document.querySelector("#copyButton");
 var reportButton = document.querySelector("#reportButton");
 var profileButton = document.querySelector("#profileButton");
+var accountButton = document.querySelector("#accountButton");
 var openComposer = document.querySelector("#openComposer");
 var closeComposer = document.querySelector("#closeComposer");
 var composerDialog = document.querySelector("#composerDialog");
@@ -99,6 +101,14 @@ var reportDialog = document.querySelector("#reportDialog");
 var reportForm = document.querySelector("#reportForm");
 var closeReport = document.querySelector("#closeReport");
 var reportWarning = document.querySelector("#reportWarning");
+var accountDialog = document.querySelector("#accountDialog");
+var accountForm = document.querySelector("#accountForm");
+var closeAccount = document.querySelector("#closeAccount");
+var accountEmail = document.querySelector("#accountEmail");
+var accountPassword = document.querySelector("#accountPassword");
+var accountDisplayName = document.querySelector("#accountDisplayName");
+var accountWarning = document.querySelector("#accountWarning");
+var logoutButton = document.querySelector("#logoutButton");
 
 var ideas = load(STORAGE_KEY, starterIdeas);
 var votes = load(VOTES_KEY, {});
@@ -133,7 +143,7 @@ async function loadRemoteState() {
   if (!globalThis.SidequestioApi) return false;
 
   try {
-    await globalThis.SidequestioApi.ensureUser();
+    currentUser = await globalThis.SidequestioApi.ensureUser();
     const [profile, remoteIdeas, remoteVotes] = await Promise.all([
       globalThis.SidequestioApi.getProfile(),
       globalThis.SidequestioApi.getIdeas(sortIdeas.value),
@@ -341,6 +351,77 @@ function profileDisplayName(profile = currentProfile) {
 function updateProfileUi() {
   if (profileButton) profileButton.textContent = `@${profileDisplayName()}`;
   if (displayNameInput) displayNameInput.value = currentProfile?.display_name || "";
+  if (accountButton) accountButton.textContent = currentUser?.is_anonymous === false ? "Account" : "Log in";
+  if (logoutButton) logoutButton.hidden = currentUser?.is_anonymous !== false;
+  if (accountDisplayName && !accountDisplayName.value) accountDisplayName.value = currentProfile?.display_name || "";
+}
+
+function openAccountDialog() {
+  if (!accountDialog) return;
+  if (accountWarning) accountWarning.textContent = "";
+  if (accountEmail) accountEmail.value = "";
+  if (accountPassword) accountPassword.value = "";
+  if (accountDisplayName) accountDisplayName.value = currentProfile?.display_name || "";
+  updateProfileUi();
+  if (typeof accountDialog.showModal === "function") accountDialog.showModal();
+  else accountDialog.setAttribute("open", "");
+  setTimeout(() => accountEmail?.focus(), 60);
+}
+
+function closeAccountDialog() {
+  accountDialog?.close();
+}
+
+async function submitAccountForm(event) {
+  const action = event.submitter?.value || "login";
+  const formData = new FormData(accountForm);
+  const payload = {
+    email: String(formData.get("email") || "").trim(),
+    password: String(formData.get("password") || ""),
+    displayName: String(formData.get("displayName") || "").trim()
+  };
+  if (!payload.email || !payload.password) {
+    if (accountWarning) accountWarning.textContent = "Add an email and password first.";
+    return;
+  }
+  if (!globalThis.SidequestioApi) {
+    if (accountWarning) accountWarning.textContent = "Accounts need Supabase setup.";
+    return;
+  }
+
+  try {
+    if (action === "signup") {
+      const result = await globalThis.SidequestioApi.signUpWithPassword(payload);
+      if (result.needsConfirmation) {
+        if (accountWarning) accountWarning.textContent = "Check your email to confirm, then log in here.";
+        return;
+      }
+    } else {
+      await globalThis.SidequestioApi.signInWithPassword(payload);
+    }
+    if (accountWarning) accountWarning.textContent = "";
+    accountDialog?.close();
+    await loadRemoteState();
+  } catch (error) {
+    console.warn("Sidequestio account action failed.", error);
+    if (accountWarning) accountWarning.textContent = error.message || "Account action failed.";
+  }
+}
+
+async function logoutAccount() {
+  if (!globalThis.SidequestioApi) return;
+  try {
+    await globalThis.SidequestioApi.signOut();
+    currentUser = null;
+    currentProfile = null;
+    votes = {};
+    save();
+    accountDialog?.close();
+    await loadRemoteState();
+  } catch (error) {
+    console.warn("Sidequestio could not log out.", error);
+    if (accountWarning) accountWarning.textContent = "Could not log out yet.";
+  }
 }
 
 function openProfileDialog(force = false) {
@@ -728,10 +809,12 @@ sidequestioShouldBoot && customTag.addEventListener("keydown", (event) => {
     customTag.classList.add("used");
   }
 });
+sidequestioShouldBoot && accountButton.addEventListener("click", openAccountDialog);
 sidequestioShouldBoot && profileButton.addEventListener("click", () => openProfileDialog(false));
 sidequestioShouldBoot && openComposer.addEventListener("click", openComposerDialog);
 sidequestioShouldBoot && closeComposer.addEventListener("click", () => composerDialog.close());
 sidequestioShouldBoot && closeProfile.addEventListener("click", closeProfileDialog);
+sidequestioShouldBoot && closeAccount.addEventListener("click", closeAccountDialog);
 sidequestioShouldBoot && closeReport.addEventListener("click", () => reportDialog.close());
 sidequestioShouldBoot && yesButton.addEventListener("click", () => voteCurrent("yes"));
 sidequestioShouldBoot && noButton.addEventListener("click", () => voteCurrent("no"));
@@ -741,6 +824,12 @@ sidequestioShouldBoot && reportButton.addEventListener("click", openReportDialog
 sidequestioShouldBoot && titleInput.addEventListener("input", () => updateCharacterWarning(titleInput, titleWarning, 10));
 sidequestioShouldBoot && descriptionInput.addEventListener("input", () => updateCharacterWarning(descriptionInput, descriptionWarning, 40));
 sidequestioShouldBoot && sortIdeas.addEventListener("change", refreshFeed);
+
+sidequestioShouldBoot && accountForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  await submitAccountForm(event);
+});
+sidequestioShouldBoot && logoutButton.addEventListener("click", logoutAccount);
 
 sidequestioShouldBoot && profileForm.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -798,7 +887,7 @@ sidequestioShouldBoot && ideaForm.addEventListener("submit", async (event) => {
 
 sidequestioShouldBoot && window.addEventListener("keydown", (event) => {
   const isTyping = ["INPUT", "TEXTAREA", "SELECT"].includes(event.target.tagName) || event.target.isContentEditable;
-  if (isTyping || composerDialog.open || profileDialog.open || reportDialog.open) return;
+  if (isTyping || composerDialog.open || profileDialog.open || reportDialog.open || accountDialog.open) return;
 
   if (event.key === "ArrowRight") {
     event.preventDefault();

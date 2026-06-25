@@ -26,6 +26,32 @@ var SidequestioApi = (() => {
     return data.user;
   }
 
+  async function getCurrentUser() {
+    const { data, error } = await client.auth.getUser();
+    if (error) throw error;
+    return data.user;
+  }
+
+  async function signUpWithPassword({ email, password, displayName }) {
+    await client.auth.signOut();
+    const { data, error } = await client.auth.signUp({ email, password });
+    if (error) throw error;
+    if (data.session && displayName?.trim()) await saveProfile(displayName);
+    return { user: data.user, needsConfirmation: !data.session };
+  }
+
+  async function signInWithPassword({ email, password }) {
+    await client.auth.signOut();
+    const { data, error } = await client.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+    return data.user;
+  }
+
+  async function signOut() {
+    const { error } = await client.auth.signOut();
+    if (error) throw error;
+  }
+
   async function getProfile() {
     const user = await ensureUser();
     const { data, error } = await client.from("profiles").select("id, display_name").eq("id", user.id).maybeSingle();
@@ -118,7 +144,7 @@ var SidequestioApi = (() => {
     };
   }
 
-  return { client, ensureUser, getProfile, saveProfile, getIdeas, getMyVotes, createIdea, reportIdea, setVote };
+  return { client, ensureUser, getCurrentUser, signUpWithPassword, signInWithPassword, signOut, getProfile, saveProfile, getIdeas, getMyVotes, createIdea, reportIdea, setVote };
 })();
 
 globalThis.SidequestioApi = SidequestioApi;
