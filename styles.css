@@ -844,7 +844,7 @@ textarea:focus,
   backdrop-filter: blur(8px);
 }
 
-.account-dialog form { padding: 18px; }
+.account-dialog .account-panel { padding: 18px; }
 .account-dialog .micro-label { color: var(--red-deep); }
 .account-dialog h1 {
   margin: 2px 0 0;
@@ -886,4 +886,75 @@ textarea:focus,
     padding: 0 10px;
     font-size: 0.78rem;
   }
+}
+
+.account-panel {
+  padding: 18px;
+}
+
+.auth-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  border-radius: 999px;
+  padding: 5px;
+  margin: 12px 0 10px;
+  background: rgba(16, 40, 39, 0.08);
+}
+
+.auth-tabs button {
+  border-radius: 999px;
+  padding: 9px 12px;
+  background: transparent;
+  color: rgba(16, 40, 39, 0.68);
+  font-weight: 950;
+  letter-spacing: 0.035em;
+}
+
+.auth-tabs button.selected {
+  background: white;
+  color: var(--ink);
+  box-shadow: 0 8px 24px rgba(5, 42, 40, 0.12);
+}
+
+.google-button {
+  width: 100%;
+  border: 1px solid rgba(5, 61, 59, 0.16);
+  border-radius: 999px;
+  padding: 12px 14px;
+  background: white;
+  color: var(--ink);
+  font-weight: 950;
+  letter-spacing: 0.02em;
+  box-shadow: 0 10px 24px rgba(5, 42, 40, 0.08);
+}
+
+.google-button::before {
+  content: "G";
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  margin-right: 8px;
+  border-radius: 999px;
+  background: #f4f7fb;
+  color: #4285f4;
+  font-weight: 950;
+}
+
+.auth-form {
+  margin-top: 10px;
+}
+
+.auth-form .submit-button {
+  margin-top: 12px;
+}
+
+.account-status {
+  border: 1px solid rgba(12, 143, 139, 0.2);
+  border-radius: 18px;
+  padding: 10px 12px;
+  background: rgba(12, 143, 139, 0.1);
+  color: var(--ink);
+  font-weight: 800;
 }

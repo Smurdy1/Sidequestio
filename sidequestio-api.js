@@ -24,7 +24,7 @@ var SidequestioApi = (() => {
 
   async function ensureUser() {
     const user = await getCurrentUser();
-    if (!user) throw new Error("Log in first.");
+    if (!user) throw new Error("Sign in first.");
     return user;
   }
 
@@ -38,6 +38,14 @@ var SidequestioApi = (() => {
     if (error) throw error;
     if (data.session && displayName?.trim()) await saveProfile(displayName);
     return { user: data.user, needsConfirmation: !data.session };
+  }
+
+  async function signInWithGoogle() {
+    const { error } = await client.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: globalThis.location?.origin }
+    });
+    if (error) throw error;
   }
 
   async function signInWithPassword({ email, password }) {
@@ -145,7 +153,7 @@ var SidequestioApi = (() => {
     };
   }
 
-  return { client, ensureUser, getCurrentUser, signUpWithPassword, signInWithPassword, signOut, getProfile, saveProfile, getIdeas, getMyVotes, createIdea, reportIdea, setVote };
+  return { client, ensureUser, getCurrentUser, signUpWithPassword, signInWithPassword, signInWithGoogle, signOut, getProfile, saveProfile, getIdeas, getMyVotes, createIdea, reportIdea, setVote };
 })();
 
 globalThis.SidequestioApi = SidequestioApi;

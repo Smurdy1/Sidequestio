@@ -21,7 +21,7 @@
           <option value="split">Debated</option>
         </select>
         <button class="profile-chip" id="profileButton" type="button" aria-label="Edit your profile">@guest</button>
-        <button class="account-chip" id="accountButton" type="button" aria-label="Open account options">Log in</button>
+        <button class="account-chip" id="accountButton" type="button" aria-label="Open account options">Sign in</button>
         <button class="icon-button" id="openComposer" type="button" aria-label="Post a new idea">+</button>
       </div>
     </header>
@@ -48,28 +48,40 @@
   </main>
 
   <dialog class="account-dialog" id="accountDialog" aria-labelledby="accountTitle">
-    <form id="accountForm" method="dialog">
+    <div class="account-panel">
       <div class="composer-head">
         <div>
-          <p class="micro-label">Real account</p>
-          <h1 id="accountTitle">Sign up or log in</h1>
+          <p class="micro-label">Sidequestio account</p>
+          <h1 id="accountTitle">Welcome back</h1>
         </div>
         <button class="close-button" id="closeAccount" type="button" aria-label="Close account"><span aria-hidden="true">×</span></button>
       </div>
-      <p class="profile-help" id="accountHelp">Use email and password so your profile, posts, votes, and reports can follow you across devices.</p>
-      <label for="accountEmail">Email</label>
-      <input id="accountEmail" name="email" type="email" autocomplete="email" placeholder="you@example.com" required />
-      <label for="accountPassword">Password</label>
-      <input id="accountPassword" name="password" type="password" autocomplete="current-password" minlength="6" placeholder="At least 6 characters" required />
-      <label for="accountDisplayName">Display name <span>for sign up</span></label>
-      <input id="accountDisplayName" name="displayName" maxlength="18" autocomplete="nickname" placeholder="ForestFox" />
-      <span class="field-warning" id="accountWarning" aria-live="polite"></span>
-      <div class="account-actions">
-        <button class="submit-button" type="submit" name="accountAction" value="signup">Sign up</button>
-        <button class="secondary-button" type="submit" name="accountAction" value="login">Log in</button>
+      <p class="profile-help" id="accountHelp">Sign in to post ideas, vote, report, and keep your profile across devices.</p>
+      <p class="account-status" id="accountStatus" hidden></p>
+      <div class="auth-tabs" id="authTabs" role="tablist" aria-label="Account mode">
+        <button class="selected" id="showLogin" type="button" data-account-mode="login" role="tab" aria-selected="true">Sign in</button>
+        <button id="showSignup" type="button" data-account-mode="signup" role="tab" aria-selected="false">Create account</button>
       </div>
+      <button class="google-button" id="googleButton" type="button">Continue with Google</button>
+      <form id="loginForm" class="auth-form" method="dialog">
+        <label for="loginEmail">Email</label>
+        <input id="loginEmail" name="email" type="email" autocomplete="email" placeholder="you@example.com" required />
+        <label for="loginPassword">Password</label>
+        <input id="loginPassword" name="password" type="password" autocomplete="current-password" minlength="6" placeholder="Your password" required />
+        <button class="submit-button" type="submit">Sign in</button>
+      </form>
+      <form id="signupForm" class="auth-form" method="dialog" hidden>
+        <label for="signupDisplayName">Display name</label>
+        <input id="signupDisplayName" name="displayName" maxlength="18" autocomplete="nickname" placeholder="ForestFox" required />
+        <label for="signupEmail">Email</label>
+        <input id="signupEmail" name="email" type="email" autocomplete="email" placeholder="you@example.com" required />
+        <label for="signupPassword">Password</label>
+        <input id="signupPassword" name="password" type="password" autocomplete="new-password" minlength="6" placeholder="At least 6 characters" required />
+        <button class="submit-button" type="submit">Create account</button>
+      </form>
+      <span class="field-warning" id="accountWarning" aria-live="polite"></span>
       <button class="text-button" id="logoutButton" type="button" hidden>Log out</button>
-    </form>
+    </div>
   </dialog>
 
   <dialog class="profile-dialog" id="profileDialog" aria-labelledby="profileTitle">

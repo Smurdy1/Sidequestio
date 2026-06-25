@@ -102,11 +102,17 @@ var reportForm = document.querySelector("#reportForm");
 var closeReport = document.querySelector("#closeReport");
 var reportWarning = document.querySelector("#reportWarning");
 var accountDialog = document.querySelector("#accountDialog");
-var accountForm = document.querySelector("#accountForm");
 var closeAccount = document.querySelector("#closeAccount");
-var accountEmail = document.querySelector("#accountEmail");
-var accountPassword = document.querySelector("#accountPassword");
-var accountDisplayName = document.querySelector("#accountDisplayName");
+var accountStatus = document.querySelector("#accountStatus");
+var authTabs = document.querySelector("#authTabs");
+var loginForm = document.querySelector("#loginForm");
+var signupForm = document.querySelector("#signupForm");
+var loginEmail = document.querySelector("#loginEmail");
+var loginPassword = document.querySelector("#loginPassword");
+var signupEmail = document.querySelector("#signupEmail");
+var signupPassword = document.querySelector("#signupPassword");
+var signupDisplayName = document.querySelector("#signupDisplayName");
+var googleButton = document.querySelector("#googleButton");
 var accountWarning = document.querySelector("#accountWarning");
 var logoutButton = document.querySelector("#logoutButton");
 
@@ -174,8 +180,8 @@ async function refreshFeed() {
 
 async function createRemoteIdea(payload) {
   if (!currentUser) {
-    openAccountDialog();
-    throw new Error("Log in to post ideas.");
+    openAccountDialog("signup");
+    throw new Error("Sign in or create an account to post ideas.");
   }
   if (!remoteReady || !globalThis.SidequestioApi) return false;
   await globalThis.SidequestioApi.createIdea(payload);
@@ -355,54 +361,96 @@ function profileDisplayName(profile = currentProfile) {
 function updateProfileUi() {
   if (profileButton) profileButton.textContent = `@${profileDisplayName()}`;
   if (displayNameInput) displayNameInput.value = currentProfile?.display_name || "";
-  if (accountButton) accountButton.textContent = currentUser ? "Account" : "Log in";
+  if (accountButton) accountButton.textContent = currentUser ? "Account" : "Sign in";
   if (logoutButton) logoutButton.hidden = !currentUser;
-  if (accountDisplayName && !accountDisplayName.value) accountDisplayName.value = currentProfile?.display_name || "";
+  if (accountStatus) {
+    accountStatus.hidden = !currentUser;
+    accountStatus.textContent = currentUser ? `Signed in as ${currentUser.email || profileDisplayName()}` : "";
+  }
+  if (authTabs) authTabs.hidden = Boolean(currentUser);
+  if (googleButton) googleButton.hidden = Boolean(currentUser);
+  if (loginForm) loginForm.hidden = Boolean(currentUser) || loginForm.dataset.active === "false";
+  if (signupForm) signupForm.hidden = Boolean(currentUser) || signupForm.dataset.active !== "true";
+  if (signupDisplayName && !signupDisplayName.value) signupDisplayName.value = currentProfile?.display_name || "";
 }
 
-function openAccountDialog() {
+function setAccountMode(mode) {
+  const isSignup = mode === "signup";
+  if (loginForm) {
+    loginForm.dataset.active = isSignup ? "false" : "true";
+    loginForm.hidden = Boolean(currentUser) || isSignup;
+  }
+  if (signupForm) {
+    signupForm.dataset.active = isSignup ? "true" : "false";
+    signupForm.hidden = Boolean(currentUser) || !isSignup;
+  }
+  document.querySelectorAll("[data-account-mode]").forEach((button) => {
+    const selected = button.dataset.accountMode === mode;
+    button.classList.toggle("selected", selected);
+    button.setAttribute("aria-selected", String(selected));
+  });
+}
+
+function openAccountDialog(mode = "login") {
   if (!accountDialog) return;
   if (accountWarning) accountWarning.textContent = "";
-  if (accountEmail) accountEmail.value = "";
-  if (accountPassword) accountPassword.value = "";
-  if (accountDisplayName) accountDisplayName.value = currentProfile?.display_name || "";
+  loginForm?.reset();
+  signupForm?.reset();
+  if (signupDisplayName) signupDisplayName.value = currentProfile?.display_name || "";
+  setAccountMode(mode);
   updateProfileUi();
   if (typeof accountDialog.showModal === "function") accountDialog.showModal();
   else accountDialog.setAttribute("open", "");
-  setTimeout(() => accountEmail?.focus(), 60);
+  setTimeout(() => (mode === "signup" ? signupDisplayName : loginEmail)?.focus(), 60);
 }
 
 function closeAccountDialog() {
   accountDialog?.close();
 }
 
-async function submitAccountForm(event) {
-  const action = event.submitter?.value || "login";
-  const formData = new FormData(accountForm);
-  const payload = {
+function authPayload(form) {
+  const formData = new FormData(form);
+  return {
     email: String(formData.get("email") || "").trim(),
     password: String(formData.get("password") || ""),
     displayName: String(formData.get("displayName") || "").trim()
   };
+}
+
+async function submitLoginForm() {
+  const payload = authPayload(loginForm);
   if (!payload.email || !payload.password) {
-    if (accountWarning) accountWarning.textContent = "Add an email and password first.";
+    if (accountWarning) accountWarning.textContent = "Add your email and password first.";
     return;
   }
+  await runAccountAction(() => globalThis.SidequestioApi.signInWithPassword(payload));
+}
+
+async function submitSignupForm() {
+  const payload = authPayload(signupForm);
+  if (!payload.displayName || !payload.email || !payload.password) {
+    if (accountWarning) accountWarning.textContent = "Add a name, email, and password first.";
+    return;
+  }
+  await runAccountAction(async () => {
+    const result = await globalThis.SidequestioApi.signUpWithPassword(payload);
+    if (result.needsConfirmation) {
+      if (accountWarning) accountWarning.textContent = "Check your email to confirm, then sign in here.";
+      setAccountMode("login");
+      return false;
+    }
+    return true;
+  });
+}
+
+async function runAccountAction(action) {
   if (!globalThis.SidequestioApi) {
     if (accountWarning) accountWarning.textContent = "Accounts need Supabase setup.";
     return;
   }
-
   try {
-    if (action === "signup") {
-      const result = await globalThis.SidequestioApi.signUpWithPassword(payload);
-      if (result.needsConfirmation) {
-        if (accountWarning) accountWarning.textContent = "Check your email to confirm, then log in here.";
-        return;
-      }
-    } else {
-      await globalThis.SidequestioApi.signInWithPassword(payload);
-    }
+    const shouldRefresh = await action();
+    if (shouldRefresh === false) return;
     if (accountWarning) accountWarning.textContent = "";
     accountDialog?.close();
     await loadRemoteState();
@@ -410,6 +458,10 @@ async function submitAccountForm(event) {
     console.warn("Sidequestio account action failed.", error);
     if (accountWarning) accountWarning.textContent = error.message || "Account action failed.";
   }
+}
+
+async function signInWithGoogle() {
+  await runAccountAction(() => globalThis.SidequestioApi.signInWithGoogle());
 }
 
 async function logoutAccount() {
@@ -573,7 +625,7 @@ function syncCurrentSlide() {
 }
 function voteCurrent(choice) {
   if (!currentUser) {
-    openAccountDialog();
+    openAccountDialog("login");
     return;
   }
   const slide = currentSlide || document.querySelector(`.idea-slide[data-id="${currentIdeaId}"]`);
@@ -582,6 +634,10 @@ function voteCurrent(choice) {
 }
 
 function animateVote(slide, choice) {
+  if (!currentUser) {
+    openAccountDialog("login");
+    return;
+  }
   if (slide.dataset.animating === "true") return;
   const id = slide.dataset.id;
   const previous = votes[id] || "";
@@ -728,7 +784,7 @@ function shareText(idea) {
 function openReportDialog() {
   const idea = currentIdea();
   if (!currentUser) {
-    openAccountDialog();
+    openAccountDialog("login");
     return;
   }
   if (!idea || idea.isMine) return;
@@ -746,7 +802,7 @@ async function submitReport() {
     return;
   }
   if (!currentUser) {
-    if (reportWarning) reportWarning.textContent = "Log in to report ideas.";
+    if (reportWarning) reportWarning.textContent = "Sign in to report ideas.";
     return;
   }
   if (!remoteReady || !globalThis.SidequestioApi) {
@@ -843,10 +899,19 @@ sidequestioShouldBoot && titleInput.addEventListener("input", () => updateCharac
 sidequestioShouldBoot && descriptionInput.addEventListener("input", () => updateCharacterWarning(descriptionInput, descriptionWarning, 40));
 sidequestioShouldBoot && sortIdeas.addEventListener("change", refreshFeed);
 
-sidequestioShouldBoot && accountForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  await submitAccountForm(event);
+sidequestioShouldBoot && authTabs.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-account-mode]");
+  if (button) setAccountMode(button.dataset.accountMode);
 });
+sidequestioShouldBoot && loginForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  await submitLoginForm();
+});
+sidequestioShouldBoot && signupForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  await submitSignupForm();
+});
+sidequestioShouldBoot && googleButton.addEventListener("click", signInWithGoogle);
 sidequestioShouldBoot && logoutButton.addEventListener("click", logoutAccount);
 
 sidequestioShouldBoot && profileForm.addEventListener("submit", async (event) => {

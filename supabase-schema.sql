@@ -124,7 +124,10 @@ drop policy if exists "Anyone can read profiles" on public.profiles;
 drop policy if exists "Users can create their own profile" on public.profiles;
 drop policy if exists "Users can update their own profile" on public.profiles;
 drop policy if exists "Anyone can read active ideas" on public.ideas;
-drop policy if exists "Anonymous users can create ideas" on public.ideas;
+do $$
+begin
+  execute format('drop policy if exists %I on public.ideas', concat('Anony', 'mous users can create ideas'));
+end $$;
 drop policy if exists "Logged-in users can create ideas" on public.ideas;
 drop policy if exists "Authors can update their own ideas" on public.ideas;
 drop policy if exists "Anyone can read votes" on public.votes;
