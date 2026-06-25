@@ -5,6 +5,7 @@ globalThis.__sidequestioInitialized = true;
 var STORAGE_KEY = "sidequestioActivityIdeas.v2";
 var VOTES_KEY = "sidequestioActivityVotes.v2";
 var LEGACY_STORAGE_KEYS = ["sidequestioActivityIdeas.v1", "sidequestioActivityVotes.v1", "ideappActivityIdeas.v1", "ideappActivityVotes.v1"];
+var PENDING_PROFILE_KEY = "sidequestioPendingProfile.v1";
 var SWIPE_THRESHOLD = 120;
 var CLEAR_VOTE_THRESHOLD = 34;
 var VOTE_ANIMATION_MS = 380;
@@ -161,6 +162,7 @@ async function loadRemoteState() {
       currentUser ? globalThis.SidequestioApi.getMyVotes() : Promise.resolve({})
     ]);
     currentProfile = profile;
+    if (currentUser && !currentProfile) currentProfile = await applyPendingProfile();
     ideas = remoteIdeas;
     votes = remoteVotes;
     remoteReady = true;
@@ -445,6 +447,7 @@ async function submitSignupForm() {
   await runAccountAction(async () => {
     const result = await globalThis.SidequestioApi.signUpWithPassword(payload);
     if (result.needsConfirmation) {
+      savePendingProfile(payload.email, payload.displayName);
       if (accountWarning) accountWarning.textContent = "Check your email to confirm, then sign in here.";
       setAccountMode("login");
       return false;
@@ -480,6 +483,7 @@ async function logoutAccount() {
     await globalThis.SidequestioApi.signOut();
     currentUser = null;
     currentProfile = null;
+    clearPendingProfile();
     votes = {};
     save();
     accountDialog?.close();
@@ -503,6 +507,31 @@ function openProfileDialog(force = false) {
 function closeProfileDialog() {
   if (profileDialog?.dataset.required === "true" && !currentProfile) return;
   profileDialog?.close();
+}
+
+function pendingProfile() {
+  try {
+    return JSON.parse(localStorage.getItem(PENDING_PROFILE_KEY) || "null");
+  } catch {
+    return null;
+  }
+}
+
+function savePendingProfile(email, displayName) {
+  if (!email || !displayName) return;
+  localStorage.setItem(PENDING_PROFILE_KEY, JSON.stringify({ email: email.toLowerCase(), displayName }));
+}
+
+function clearPendingProfile() {
+  localStorage.removeItem(PENDING_PROFILE_KEY);
+}
+
+async function applyPendingProfile() {
+  const pending = pendingProfile();
+  if (!pending || !currentUser?.email || pending.email !== currentUser.email.toLowerCase()) return null;
+  const profile = await globalThis.SidequestioApi.saveProfile(pending.displayName);
+  clearPendingProfile();
+  return profile;
 }
 
 function maybePromptForProfile() {
