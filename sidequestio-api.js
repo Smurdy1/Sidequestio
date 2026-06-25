@@ -75,6 +75,16 @@ var SidequestioApi = (() => {
     return data;
   }
 
+  async function reportIdea(ideaId, reason) {
+    const user = await ensureUser();
+    const { error } = await client.from("reports").insert({
+      idea_id: ideaId,
+      reporter_user_id: user.id,
+      reason
+    });
+    if (error) throw error;
+  }
+
   async function setVote(ideaId, vote) {
     const user = await ensureUser();
     if (!vote) {
@@ -108,7 +118,7 @@ var SidequestioApi = (() => {
     };
   }
 
-  return { client, ensureUser, getProfile, saveProfile, getIdeas, getMyVotes, createIdea, setVote };
+  return { client, ensureUser, getProfile, saveProfile, getIdeas, getMyVotes, createIdea, reportIdea, setVote };
 })();
 
 globalThis.SidequestioApi = SidequestioApi;

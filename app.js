@@ -72,6 +72,7 @@ var yesButton = document.querySelector("#yesButton");
 var noButton = document.querySelector("#noButton");
 var undoButton = document.querySelector("#undoButton");
 var copyButton = document.querySelector("#copyButton");
+var reportButton = document.querySelector("#reportButton");
 var profileButton = document.querySelector("#profileButton");
 var openComposer = document.querySelector("#openComposer");
 var closeComposer = document.querySelector("#closeComposer");
@@ -94,6 +95,10 @@ var profileForm = document.querySelector("#profileForm");
 var closeProfile = document.querySelector("#closeProfile");
 var displayNameInput = document.querySelector("#displayName");
 var profileWarning = document.querySelector("#profileWarning");
+var reportDialog = document.querySelector("#reportDialog");
+var reportForm = document.querySelector("#reportForm");
+var closeReport = document.querySelector("#closeReport");
+var reportWarning = document.querySelector("#reportWarning");
 
 var ideas = load(STORAGE_KEY, starterIdeas);
 var votes = load(VOTES_KEY, {});
@@ -596,6 +601,7 @@ function updateActionStates() {
   yesButton.classList.toggle("active", votes[currentIdeaId] === "yes");
   noButton.classList.toggle("active", votes[currentIdeaId] === "no");
   undoButton.disabled = !lastVote;
+  if (reportButton) reportButton.disabled = !currentIdeaId || Boolean(currentIdea()?.isMine);
 }
 
 function openComposerDialog() {
@@ -626,6 +632,48 @@ function shareText(idea) {
     `Tags: ${ideaTags(idea).join(", ")}`,
     `Votes: ${percents.yes}% yes / ${percents.no}% no`
   ].filter(Boolean).join("\n");
+}
+
+function openReportDialog() {
+  const idea = currentIdea();
+  if (!idea || idea.isMine) return;
+  if (reportWarning) reportWarning.textContent = "";
+  reportForm?.reset();
+  if (typeof reportDialog.showModal === "function") reportDialog.showModal();
+  else reportDialog.setAttribute("open", "");
+}
+
+async function submitReport() {
+  const idea = currentIdea();
+  if (!idea) return;
+  if (idea.isMine) {
+    if (reportWarning) reportWarning.textContent = "You cannot report your own post.";
+    return;
+  }
+  if (!remoteReady || !globalThis.SidequestioApi) {
+    if (reportWarning) reportWarning.textContent = "Reports need Supabase setup.";
+    return;
+  }
+  const formData = new FormData(reportForm);
+  const reason = formData.get("reason");
+  if (!reason) {
+    if (reportWarning) reportWarning.textContent = "Pick a report reason first.";
+    return;
+  }
+
+  try {
+    await globalThis.SidequestioApi.reportIdea(idea.id, reason);
+    if (reportWarning) reportWarning.textContent = "Report sent. Thank you.";
+    reportButton.classList.add("reported");
+    setTimeout(() => {
+      reportButton.classList.remove("reported");
+      reportDialog?.close();
+      refreshFeed();
+    }, 650);
+  } catch (error) {
+    console.warn("Sidequestio could not submit this report.", error);
+    if (reportWarning) reportWarning.textContent = error.code === "23505" ? "You already reported this idea." : "Could not send report yet.";
+  }
 }
 
 function copyCurrentIdea() {
@@ -684,10 +732,12 @@ sidequestioShouldBoot && profileButton.addEventListener("click", () => openProfi
 sidequestioShouldBoot && openComposer.addEventListener("click", openComposerDialog);
 sidequestioShouldBoot && closeComposer.addEventListener("click", () => composerDialog.close());
 sidequestioShouldBoot && closeProfile.addEventListener("click", closeProfileDialog);
+sidequestioShouldBoot && closeReport.addEventListener("click", () => reportDialog.close());
 sidequestioShouldBoot && yesButton.addEventListener("click", () => voteCurrent("yes"));
 sidequestioShouldBoot && noButton.addEventListener("click", () => voteCurrent("no"));
 sidequestioShouldBoot && undoButton.addEventListener("click", undoLastVote);
 sidequestioShouldBoot && copyButton.addEventListener("click", copyCurrentIdea);
+sidequestioShouldBoot && reportButton.addEventListener("click", openReportDialog);
 sidequestioShouldBoot && titleInput.addEventListener("input", () => updateCharacterWarning(titleInput, titleWarning, 10));
 sidequestioShouldBoot && descriptionInput.addEventListener("input", () => updateCharacterWarning(descriptionInput, descriptionWarning, 40));
 sidequestioShouldBoot && sortIdeas.addEventListener("change", refreshFeed);
@@ -695,6 +745,11 @@ sidequestioShouldBoot && sortIdeas.addEventListener("change", refreshFeed);
 sidequestioShouldBoot && profileForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   await saveProfileFromForm();
+});
+
+sidequestioShouldBoot && reportForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  await submitReport();
 });
 
 sidequestioShouldBoot && ideaForm.addEventListener("submit", async (event) => {
@@ -743,7 +798,7 @@ sidequestioShouldBoot && ideaForm.addEventListener("submit", async (event) => {
 
 sidequestioShouldBoot && window.addEventListener("keydown", (event) => {
   const isTyping = ["INPUT", "TEXTAREA", "SELECT"].includes(event.target.tagName) || event.target.isContentEditable;
-  if (isTyping || composerDialog.open) return;
+  if (isTyping || composerDialog.open || profileDialog.open || reportDialog.open) return;
 
   if (event.key === "ArrowRight") {
     event.preventDefault();

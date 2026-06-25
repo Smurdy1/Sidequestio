@@ -29,6 +29,58 @@ create table if not exists public.votes (
   unique (idea_id, user_id)
 );
 
+create table if not exists public.reports (
+  id uuid primary key default gen_random_uuid(),
+  idea_id uuid not null references public.ideas(id) on delete cascade,
+  reporter_user_id uuid not null references auth.users(id) on delete cascade,
+  reason text not null check (reason in ('spam', 'unsafe', 'offensive', 'other')),
+  created_at timestamptz not null default now(),
+  unique (idea_id, reporter_user_id)
+);
+
+create table if not exists public.moderation_events (
+  id uuid primary key default gen_random_uuid(),
+  idea_id uuid not null references public.ideas(id) on delete cascade,
+  event_type text not null check (event_type in ('hidden_for_review')),
+  report_count int not null default 0,
+  created_at timestamptz not null default now()
+);
+
+create or replace function public.hide_idea_after_report_threshold()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  report_total int;
+  hidden_idea_id uuid;
+begin
+  select count(*)::int into report_total
+  from public.reports
+  where idea_id = new.idea_id;
+
+  if report_total >= 3 then
+    update public.ideas
+    set status = 'hidden', updated_at = now()
+    where id = new.idea_id and status = 'active'
+    returning id into hidden_idea_id;
+
+    if hidden_idea_id is not null then
+      insert into public.moderation_events (idea_id, event_type, report_count)
+      values (hidden_idea_id, 'hidden_for_review', report_total);
+    end if;
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists hide_idea_after_report_threshold on public.reports;
+create trigger hide_idea_after_report_threshold
+  after insert on public.reports
+  for each row execute function public.hide_idea_after_report_threshold();
+
 -- Drop the old view before recreating it because Postgres cannot insert new
 -- columns into the middle of an existing view with CREATE OR REPLACE VIEW.
 drop view if exists public.ideas_with_counts;
@@ -59,11 +111,14 @@ group by i.id, p.display_name;
 alter table public.profiles enable row level security;
 alter table public.ideas enable row level security;
 alter table public.votes enable row level security;
+alter table public.reports enable row level security;
+alter table public.moderation_events enable row level security;
 
 grant select on public.ideas_with_counts to anon, authenticated;
 grant select, insert, update on public.profiles to anon, authenticated;
 grant select, insert, update on public.ideas to anon, authenticated;
 grant select, insert, update, delete on public.votes to anon, authenticated;
+grant select, insert on public.reports to anon, authenticated;
 
 drop policy if exists "Anyone can read profiles" on public.profiles;
 drop policy if exists "Users can create their own profile" on public.profiles;
@@ -75,6 +130,8 @@ drop policy if exists "Anyone can read votes" on public.votes;
 drop policy if exists "Users can create their own votes" on public.votes;
 drop policy if exists "Users can update their own votes" on public.votes;
 drop policy if exists "Users can delete their own votes" on public.votes;
+drop policy if exists "Users can read their own reports" on public.reports;
+drop policy if exists "Users can report active ideas they did not write" on public.reports;
 
 create policy "Anyone can read profiles" on public.profiles
   for select using (true);
@@ -105,4 +162,18 @@ create policy "Users can update their own votes" on public.votes
 
 create policy "Users can delete their own votes" on public.votes
   for delete using (auth.uid() = user_id);
+
+create policy "Users can read their own reports" on public.reports
+  for select using (auth.uid() = reporter_user_id);
+
+create policy "Users can report active ideas they did not write" on public.reports
+  for insert with check (
+    auth.uid() = reporter_user_id
+    and exists (
+      select 1 from public.ideas
+      where ideas.id = reports.idea_id
+        and ideas.status = 'active'
+        and ideas.user_id <> auth.uid()
+    )
+  );
 

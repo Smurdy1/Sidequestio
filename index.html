@@ -40,6 +40,9 @@
       <button class="action-button" id="copyButton" type="button" aria-label="Copy current idea">
         <span aria-hidden="true">⧉</span>
       </button>
+      <button class="action-button report" id="reportButton" type="button" aria-label="Report current idea">
+        <span aria-hidden="true">!</span>
+      </button>
     </aside>
   </main>
 
@@ -57,6 +60,27 @@
       <input id="displayName" name="displayName" maxlength="18" placeholder="ForestFox" autocomplete="nickname" required />
       <span class="field-warning" id="profileWarning" aria-live="polite"></span>
       <button class="submit-button" type="submit">Save profile</button>
+    </form>
+  </dialog>
+
+  <dialog class="report-dialog" id="reportDialog" aria-labelledby="reportTitle">
+    <form id="reportForm" method="dialog">
+      <div class="composer-head">
+        <div>
+          <p class="micro-label">Keep Sidequestio useful</p>
+          <h1 id="reportTitle">Report idea?</h1>
+        </div>
+        <button class="close-button" id="closeReport" type="button" aria-label="Close report"><span aria-hidden="true">×</span></button>
+      </div>
+      <p class="profile-help">Reports help hide spam or unsafe ideas until they can be reviewed.</p>
+      <div class="report-options" aria-label="Report reason">
+        <label><input type="radio" name="reason" value="spam" required /> Spam or fake</label>
+        <label><input type="radio" name="reason" value="unsafe" /> Unsafe activity</label>
+        <label><input type="radio" name="reason" value="offensive" /> Mean or offensive</label>
+        <label><input type="radio" name="reason" value="other" /> Something else</label>
+      </div>
+      <span class="field-warning" id="reportWarning" aria-live="polite"></span>
+      <button class="submit-button" type="submit">Send report</button>
     </form>
   </dialog>
 
