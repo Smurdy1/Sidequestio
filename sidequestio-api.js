@@ -12,8 +12,12 @@ var SidequestioApi = (() => {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
-      detectSessionInUrl: false
+      detectSessionInUrl: true
     }
+  });
+
+  client.auth.onAuthStateChange((event) => {
+    globalThis.dispatchEvent(new CustomEvent("sidequestio-auth-changed", { detail: { event } }));
   });
 
   async function getCurrentUser() {
@@ -36,6 +40,9 @@ var SidequestioApi = (() => {
       options: { emailRedirectTo: globalThis.location?.origin }
     });
     if (error) throw error;
+    if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+      throw new Error("Email already in use. Try signing in instead.");
+    }
     if (data.session && displayName?.trim()) await saveProfile(displayName);
     return { user: data.user, needsConfirmation: !data.session };
   }

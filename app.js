@@ -2,8 +2,9 @@
 var sidequestioShouldBoot = !globalThis.__sidequestioInitialized;
 globalThis.__sidequestioInitialized = true;
 
-var STORAGE_KEY = "sidequestioActivityIdeas.v1";
-var VOTES_KEY = "sidequestioActivityVotes.v1";
+var STORAGE_KEY = "sidequestioActivityIdeas.v2";
+var VOTES_KEY = "sidequestioActivityVotes.v2";
+var LEGACY_STORAGE_KEYS = ["sidequestioActivityIdeas.v1", "sidequestioActivityVotes.v1", "ideappActivityIdeas.v1", "ideappActivityVotes.v1"];
 var SWIPE_THRESHOLD = 120;
 var CLEAR_VOTE_THRESHOLD = 34;
 var VOTE_ANIMATION_MS = 380;
@@ -122,6 +123,10 @@ var pendingVoteSyncs = new Map();
 var currentIdeaId = null;
 var currentSlide = null;
 if (tagLimit) tagLimit.textContent = TAG_LIMIT;
+
+function cleanupLegacyAccountData() {
+  LEGACY_STORAGE_KEYS.forEach((key) => localStorage.removeItem(key));
+}
 
 function load(key, fallback) {
   try {
@@ -275,13 +280,17 @@ function toggleTag(tag) {
   if (selectedTagSet.has(cleanTag)) selectedTagSet.delete(cleanTag);
   else if (selectedTagSet.size < TAG_LIMIT) selectedTagSet.add(cleanTag);
   else if (tagWarning) tagWarning.textContent = `${TAG_LIMIT} tags max`;
-  syncTagInputs();
+  cleanupLegacyAccountData();
+setAccountMode("login");
+syncTagInputs();
 }
 
 function resetTagPicker(defaultTags = []) {
   selectedTagSet = new Set(defaultTags.map((tag) => normalizeTag(tag)).filter(Boolean).slice(0, TAG_LIMIT));
   if (customTag) customTag.classList.remove("used");
-  syncTagInputs();
+  cleanupLegacyAccountData();
+setAccountMode("login");
+syncTagInputs();
 }
 
 function render() {
@@ -393,6 +402,7 @@ function setAccountMode(mode) {
 
 function openAccountDialog(mode = "login") {
   if (!accountDialog) return;
+  if (mode?.type) mode = "login";
   if (accountWarning) accountWarning.textContent = "";
   loginForm?.reset();
   signupForm?.reset();
@@ -883,7 +893,7 @@ sidequestioShouldBoot && customTag.addEventListener("keydown", (event) => {
     customTag.classList.add("used");
   }
 });
-sidequestioShouldBoot && accountButton.addEventListener("click", openAccountDialog);
+sidequestioShouldBoot && accountButton.addEventListener("click", () => openAccountDialog("login"));
 sidequestioShouldBoot && profileButton.addEventListener("click", () => openProfileDialog(false));
 sidequestioShouldBoot && openComposer.addEventListener("click", openComposerDialog);
 sidequestioShouldBoot && closeComposer.addEventListener("click", () => composerDialog.close());
@@ -913,6 +923,7 @@ sidequestioShouldBoot && signupForm.addEventListener("submit", async (event) => 
 });
 sidequestioShouldBoot && googleButton.addEventListener("click", signInWithGoogle);
 sidequestioShouldBoot && logoutButton.addEventListener("click", logoutAccount);
+sidequestioShouldBoot && window.addEventListener("sidequestio-auth-changed", () => refreshFeed());
 
 sidequestioShouldBoot && profileForm.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -970,6 +981,8 @@ sidequestioShouldBoot && window.addEventListener("keydown", (event) => {
   }
 });
 
+cleanupLegacyAccountData();
+setAccountMode("login");
 syncTagInputs();
 updateCharacterWarning(titleInput, titleWarning, 10);
 updateCharacterWarning(descriptionInput, descriptionWarning, 40);
