@@ -143,11 +143,11 @@ async function loadRemoteState() {
   if (!globalThis.SidequestioApi) return false;
 
   try {
-    currentUser = await globalThis.SidequestioApi.ensureUser();
+    currentUser = await globalThis.SidequestioApi.getCurrentUser();
     const [profile, remoteIdeas, remoteVotes] = await Promise.all([
-      globalThis.SidequestioApi.getProfile(),
+      currentUser ? globalThis.SidequestioApi.getProfile() : Promise.resolve(null),
       globalThis.SidequestioApi.getIdeas(sortIdeas.value),
-      globalThis.SidequestioApi.getMyVotes()
+      currentUser ? globalThis.SidequestioApi.getMyVotes() : Promise.resolve({})
     ]);
     currentProfile = profile;
     ideas = remoteIdeas;
@@ -173,6 +173,10 @@ async function refreshFeed() {
 }
 
 async function createRemoteIdea(payload) {
+  if (!currentUser) {
+    openAccountDialog();
+    throw new Error("Log in to post ideas.");
+  }
   if (!remoteReady || !globalThis.SidequestioApi) return false;
   await globalThis.SidequestioApi.createIdea(payload);
   await loadRemoteState();
@@ -180,7 +184,7 @@ async function createRemoteIdea(payload) {
 }
 
 function syncVoteToRemote(id, nextVote, previousVote) {
-  if (!remoteReady || !globalThis.SidequestioApi) return;
+  if (!currentUser || !remoteReady || !globalThis.SidequestioApi) return;
   const syncToken = crypto.randomUUID();
   pendingVoteSyncs.set(id, syncToken);
   globalThis.SidequestioApi.setVote(id, nextVote)
@@ -351,8 +355,8 @@ function profileDisplayName(profile = currentProfile) {
 function updateProfileUi() {
   if (profileButton) profileButton.textContent = `@${profileDisplayName()}`;
   if (displayNameInput) displayNameInput.value = currentProfile?.display_name || "";
-  if (accountButton) accountButton.textContent = currentUser?.is_anonymous === false ? "Account" : "Log in";
-  if (logoutButton) logoutButton.hidden = currentUser?.is_anonymous !== false;
+  if (accountButton) accountButton.textContent = currentUser ? "Account" : "Log in";
+  if (logoutButton) logoutButton.hidden = !currentUser;
   if (accountDisplayName && !accountDisplayName.value) accountDisplayName.value = currentProfile?.display_name || "";
 }
 
@@ -440,7 +444,7 @@ function closeProfileDialog() {
 }
 
 function maybePromptForProfile() {
-  if (currentProfile || !remoteReady || profileDialog?.open) return;
+  if (!currentUser || currentProfile || !remoteReady || profileDialog?.open) return;
   openProfileDialog(true);
 }
 
@@ -568,6 +572,10 @@ function syncCurrentSlide() {
   updateActionStates();
 }
 function voteCurrent(choice) {
+  if (!currentUser) {
+    openAccountDialog();
+    return;
+  }
   const slide = currentSlide || document.querySelector(`.idea-slide[data-id="${currentIdeaId}"]`);
   if (!slide) return;
   animateVote(slide, choice);
@@ -681,8 +689,10 @@ function scrollToSlide(slide) {
 function updateActionStates() {
   yesButton.classList.toggle("active", votes[currentIdeaId] === "yes");
   noButton.classList.toggle("active", votes[currentIdeaId] === "no");
-  undoButton.disabled = !lastVote;
-  if (reportButton) reportButton.disabled = !currentIdeaId || Boolean(currentIdea()?.isMine);
+  yesButton.disabled = !currentUser;
+  noButton.disabled = !currentUser;
+  undoButton.disabled = !currentUser || !lastVote;
+  if (reportButton) reportButton.disabled = !currentUser || !currentIdeaId || Boolean(currentIdea()?.isMine);
 }
 
 function openComposerDialog() {
@@ -717,6 +727,10 @@ function shareText(idea) {
 
 function openReportDialog() {
   const idea = currentIdea();
+  if (!currentUser) {
+    openAccountDialog();
+    return;
+  }
   if (!idea || idea.isMine) return;
   if (reportWarning) reportWarning.textContent = "";
   reportForm?.reset();
@@ -729,6 +743,10 @@ async function submitReport() {
   if (!idea) return;
   if (idea.isMine) {
     if (reportWarning) reportWarning.textContent = "You cannot report your own post.";
+    return;
+  }
+  if (!currentUser) {
+    if (reportWarning) reportWarning.textContent = "Log in to report ideas.";
     return;
   }
   if (!remoteReady || !globalThis.SidequestioApi) {
@@ -860,19 +878,7 @@ sidequestioShouldBoot && ideaForm.addEventListener("submit", async (event) => {
   try {
     const postedRemote = await createRemoteIdea(payload);
     if (!postedRemote) {
-      ideas.unshift({
-        id: crypto.randomUUID(),
-        title: payload.title,
-        description: payload.description,
-        category: tags[0] || "Wildcard",
-        effort: tags[1] || "Low effort",
-        tags,
-        createdAt: Date.now(),
-        yes: 0,
-        no: 0
-      });
-      save();
-      render();
+      throw new Error("Supabase is required to post ideas.");
     }
 
     ideaForm.reset();

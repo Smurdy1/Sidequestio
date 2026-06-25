@@ -16,25 +16,25 @@ var SidequestioApi = (() => {
     }
   });
 
-  async function ensureUser() {
-    const { data: sessionData, error: sessionError } = await client.auth.getSession();
-    if (sessionError) throw sessionError;
-    if (sessionData.session?.user) return sessionData.session.user;
-
-    const { data, error } = await client.auth.signInAnonymously();
+  async function getCurrentUser() {
+    const { data, error } = await client.auth.getSession();
     if (error) throw error;
-    return data.user;
+    return data.session?.user || null;
   }
 
-  async function getCurrentUser() {
-    const { data, error } = await client.auth.getUser();
-    if (error) throw error;
-    return data.user;
+  async function ensureUser() {
+    const user = await getCurrentUser();
+    if (!user) throw new Error("Log in first.");
+    return user;
   }
 
   async function signUpWithPassword({ email, password, displayName }) {
     await client.auth.signOut();
-    const { data, error } = await client.auth.signUp({ email, password });
+    const { data, error } = await client.auth.signUp({
+      email,
+      password,
+      options: { emailRedirectTo: globalThis.location?.origin }
+    });
     if (error) throw error;
     if (data.session && displayName?.trim()) await saveProfile(displayName);
     return { user: data.user, needsConfirmation: !data.session };
@@ -82,7 +82,8 @@ var SidequestioApi = (() => {
   }
 
   async function getMyVotes() {
-    const user = await ensureUser();
+    const user = await getCurrentUser();
+    if (!user) return {};
     const { data, error } = await client.from("votes").select("idea_id, vote").eq("user_id", user.id);
     if (error) throw error;
     return Object.fromEntries(data.map((row) => [row.idea_id, row.vote]));

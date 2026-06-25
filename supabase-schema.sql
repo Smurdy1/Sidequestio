@@ -1,5 +1,5 @@
 -- Sidequestio first Supabase schema.
--- Before running this, enable Auth > Sign In / Providers > Anonymous sign-ins in Supabase.
+-- Before running this, enable Auth > Sign In / Providers > Email in Supabase.
 
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
@@ -125,6 +125,7 @@ drop policy if exists "Users can create their own profile" on public.profiles;
 drop policy if exists "Users can update their own profile" on public.profiles;
 drop policy if exists "Anyone can read active ideas" on public.ideas;
 drop policy if exists "Anonymous users can create ideas" on public.ideas;
+drop policy if exists "Logged-in users can create ideas" on public.ideas;
 drop policy if exists "Authors can update their own ideas" on public.ideas;
 drop policy if exists "Anyone can read votes" on public.votes;
 drop policy if exists "Users can create their own votes" on public.votes;
@@ -145,7 +146,7 @@ create policy "Users can update their own profile" on public.profiles
 create policy "Anyone can read active ideas" on public.ideas
   for select using (status = 'active');
 
-create policy "Anonymous users can create ideas" on public.ideas
+create policy "Logged-in users can create ideas" on public.ideas
   for insert with check (auth.uid() = user_id);
 
 create policy "Authors can update their own ideas" on public.ideas
