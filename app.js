@@ -117,6 +117,11 @@ var signupDisplayName = document.querySelector("#signupDisplayName");
 var googleButton = document.querySelector("#googleButton");
 var accountWarning = document.querySelector("#accountWarning");
 var logoutButton = document.querySelector("#logoutButton");
+var myPostsButton = document.querySelector("#myPostsButton");
+var myPostsDialog = document.querySelector("#myPostsDialog");
+var closeMyPosts = document.querySelector("#closeMyPosts");
+var myPostsList = document.querySelector("#myPostsList");
+var myPostsWarning = document.querySelector("#myPostsWarning");
 
 var ideas = load(STORAGE_KEY, starterIdeas);
 var votes = load(VOTES_KEY, {});
@@ -374,6 +379,7 @@ function updateProfileUi() {
   if (displayNameInput) displayNameInput.value = currentProfile?.display_name || "";
   if (accountButton) accountButton.textContent = currentUser ? "Account" : "Sign in";
   if (logoutButton) logoutButton.hidden = !currentUser;
+  if (myPostsButton) myPostsButton.hidden = !currentUser;
   if (accountStatus) {
     accountStatus.hidden = !currentUser;
     accountStatus.textContent = currentUser ? `Signed in as ${currentUser.email || profileDisplayName()}` : "";
@@ -418,6 +424,58 @@ function openAccountDialog(mode = "login") {
 
 function closeAccountDialog() {
   accountDialog?.close();
+}
+
+function myPostMarkup(idea) {
+  return `
+    <article class="my-post-item">
+      <div>
+        <strong>${escapeText(idea.title)}</strong>
+        <p>${escapeText(idea.description || "No pitch added.")}</p>
+        <span>${idea.yes} yes · ${idea.no} no · ${ideaTags(idea).map(escapeText).join(" · ")}</span>
+      </div>
+      <button type="button" data-hide-idea="${escapeText(idea.id)}">Hide</button>
+    </article>
+  `;
+}
+
+async function openMyPostsDialog() {
+  if (!currentUser) {
+    openAccountDialog("login");
+    return;
+  }
+  if (!globalThis.SidequestioApi || !remoteReady) {
+    if (myPostsWarning) myPostsWarning.textContent = "My posts need Supabase setup.";
+    return;
+  }
+  if (myPostsWarning) myPostsWarning.textContent = "";
+  if (myPostsList) myPostsList.innerHTML = `<p class="empty-list">Loading your posts…</p>`;
+  if (typeof myPostsDialog.showModal === "function") myPostsDialog.showModal();
+  else myPostsDialog.setAttribute("open", "");
+  await refreshMyPosts();
+}
+
+async function refreshMyPosts() {
+  try {
+    const posts = await globalThis.SidequestioApi.getMyIdeas();
+    if (!myPostsList) return;
+    myPostsList.innerHTML = posts.length
+      ? posts.map(myPostMarkup).join("")
+      : `<p class="empty-list">You have not posted any active ideas yet.</p>`;
+  } catch (error) {
+    console.warn("Sidequestio could not load your posts.", error);
+    if (myPostsWarning) myPostsWarning.textContent = "Could not load your posts yet.";
+  }
+}
+
+async function hideMyPost(ideaId) {
+  try {
+    await globalThis.SidequestioApi.hideIdea(ideaId);
+    await Promise.all([refreshMyPosts(), loadRemoteState()]);
+  } catch (error) {
+    console.warn("Sidequestio could not hide this post.", error);
+    if (myPostsWarning) myPostsWarning.textContent = "Could not hide that post yet.";
+  }
 }
 
 function authPayload(form) {
@@ -928,6 +986,7 @@ sidequestioShouldBoot && openComposer.addEventListener("click", openComposerDial
 sidequestioShouldBoot && closeComposer.addEventListener("click", () => composerDialog.close());
 sidequestioShouldBoot && closeProfile.addEventListener("click", closeProfileDialog);
 sidequestioShouldBoot && closeAccount.addEventListener("click", closeAccountDialog);
+sidequestioShouldBoot && closeMyPosts.addEventListener("click", () => myPostsDialog.close());
 sidequestioShouldBoot && closeReport.addEventListener("click", () => reportDialog.close());
 sidequestioShouldBoot && yesButton.addEventListener("click", () => voteCurrent("yes"));
 sidequestioShouldBoot && noButton.addEventListener("click", () => voteCurrent("no"));
@@ -952,6 +1011,11 @@ sidequestioShouldBoot && signupForm.addEventListener("submit", async (event) => 
 });
 sidequestioShouldBoot && googleButton.addEventListener("click", signInWithGoogle);
 sidequestioShouldBoot && logoutButton.addEventListener("click", logoutAccount);
+sidequestioShouldBoot && myPostsButton.addEventListener("click", openMyPostsDialog);
+sidequestioShouldBoot && myPostsList.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-hide-idea]");
+  if (button) hideMyPost(button.dataset.hideIdea);
+});
 sidequestioShouldBoot && window.addEventListener("sidequestio-auth-changed", () => refreshFeed());
 
 sidequestioShouldBoot && profileForm.addEventListener("submit", async (event) => {
@@ -998,7 +1062,7 @@ sidequestioShouldBoot && ideaForm.addEventListener("submit", async (event) => {
 
 sidequestioShouldBoot && window.addEventListener("keydown", (event) => {
   const isTyping = ["INPUT", "TEXTAREA", "SELECT"].includes(event.target.tagName) || event.target.isContentEditable;
-  if (isTyping || composerDialog.open || profileDialog.open || reportDialog.open || accountDialog.open) return;
+  if (isTyping || composerDialog.open || profileDialog.open || reportDialog.open || accountDialog.open || myPostsDialog.open) return;
 
   if (event.key === "ArrowRight") {
     event.preventDefault();

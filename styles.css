@@ -962,3 +962,82 @@ textarea:focus,
 [hidden] {
   display: none !important;
 }
+
+.my-posts-dialog {
+  width: min(620px, calc(100% - 22px));
+  max-height: calc(100dvh - 28px);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 30px;
+  padding: 0;
+  background: rgba(255, 249, 239, 0.97);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+}
+
+.my-posts-dialog::backdrop {
+  background: rgba(3, 20, 20, 0.68);
+  backdrop-filter: blur(8px);
+}
+
+.my-posts-panel {
+  padding: 18px;
+}
+
+.my-posts-list {
+  display: grid;
+  gap: 10px;
+  max-height: min(460px, 58dvh);
+  overflow: auto;
+  padding-right: 3px;
+}
+
+.my-post-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid rgba(5, 61, 59, 0.12);
+  border-radius: 20px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.74);
+}
+
+.my-post-item strong {
+  display: block;
+  font-size: 1rem;
+  line-height: 1.15;
+}
+
+.my-post-item p {
+  margin: 5px 0;
+  color: rgba(16, 40, 39, 0.68);
+}
+
+.my-post-item span {
+  color: rgba(16, 40, 39, 0.56);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.my-post-item button,
+.account-wide {
+  border-radius: 999px;
+  padding: 10px 13px;
+  background: rgba(255, 112, 91, 0.12);
+  color: var(--red-deep);
+  font-weight: 950;
+}
+
+.account-wide {
+  width: 100%;
+  margin-top: 10px;
+}
+
+.empty-list {
+  margin: 0;
+  border: 1px dashed rgba(5, 61, 59, 0.18);
+  border-radius: 18px;
+  padding: 14px;
+  color: rgba(16, 40, 39, 0.62);
+  font-weight: 800;
+}

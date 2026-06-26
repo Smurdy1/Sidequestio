@@ -104,6 +104,27 @@ var SidequestioApi = (() => {
     return Object.fromEntries(data.map((row) => [row.idea_id, row.vote]));
   }
 
+  async function getMyIdeas() {
+    const user = await ensureUser();
+    const { data, error } = await client
+      .from("ideas_with_counts")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return data.map(normalizeIdeaRow);
+  }
+
+  async function hideIdea(ideaId) {
+    const user = await ensureUser();
+    const { error } = await client
+      .from("ideas")
+      .update({ status: "hidden", updated_at: new Date().toISOString() })
+      .eq("id", ideaId)
+      .eq("user_id", user.id);
+    if (error) throw error;
+  }
+
   async function createIdea({ title, description, tags }) {
     const user = await ensureUser();
     const { data, error } = await client.from("ideas").insert({
@@ -160,7 +181,7 @@ var SidequestioApi = (() => {
     };
   }
 
-  return { client, ensureUser, getCurrentUser, signUpWithPassword, signInWithPassword, signInWithGoogle, signOut, getProfile, saveProfile, getIdeas, getMyVotes, createIdea, reportIdea, setVote };
+  return { client, ensureUser, getCurrentUser, signUpWithPassword, signInWithPassword, signInWithGoogle, signOut, getProfile, saveProfile, getIdeas, getMyVotes, getMyIdeas, hideIdea, createIdea, reportIdea, setVote };
 })();
 
 globalThis.SidequestioApi = SidequestioApi;
