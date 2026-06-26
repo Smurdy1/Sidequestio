@@ -439,6 +439,12 @@ function closeAccountDialog() {
   accountDialog?.close();
 }
 
+function closePostPanels() {
+  accountDialog?.close();
+  myPostsDialog?.close();
+  editPostDialog?.close();
+}
+
 function myPostMarkup(idea) {
   return `
     <article class="my-post-item" data-focus-idea="${escapeText(idea.id)}">
@@ -496,6 +502,7 @@ async function submitEditPost() {
 }
 
 async function openMyPostsDialog() {
+  accountDialog?.close();
   if (!currentUser) {
     openAccountDialog("login");
     return;
@@ -527,7 +534,7 @@ async function refreshMyPosts() {
 function scrollToIdea(ideaId) {
   const slide = [...document.querySelectorAll(".idea-slide")].find((item) => item.dataset.id === ideaId);
   if (slide) {
-    myPostsDialog?.close();
+    closePostPanels();
     scrollToSlide(slide);
   }
 }
@@ -541,13 +548,28 @@ function handleOwnerAction(event, idea) {
 }
 
 async function hideMyPost(ideaId) {
+  if (!currentUser || !globalThis.SidequestioApi || !remoteReady) {
+    if (myPostsWarning) myPostsWarning.textContent = "Sign in to hide your post.";
+    return;
+  }
+
+  if (myPostsWarning) myPostsWarning.textContent = "";
+
   try {
     await globalThis.SidequestioApi.hideIdea(ideaId);
-    await Promise.all([refreshMyPosts(), loadRemoteState()]);
   } catch (error) {
     console.warn("Sidequestio could not hide this post.", error);
     if (myPostsWarning) myPostsWarning.textContent = "Could not hide that post yet.";
+    return;
   }
+
+  ideas = ideas.filter((idea) => idea.id !== ideaId);
+  renderFeed();
+
+  await Promise.allSettled([
+    myPostsDialog?.open ? refreshMyPosts() : Promise.resolve(),
+    loadRemoteState()
+  ]);
 }
 
 function authPayload(form) {
