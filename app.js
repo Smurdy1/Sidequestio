@@ -122,6 +122,14 @@ var myPostsDialog = document.querySelector("#myPostsDialog");
 var closeMyPosts = document.querySelector("#closeMyPosts");
 var myPostsList = document.querySelector("#myPostsList");
 var myPostsWarning = document.querySelector("#myPostsWarning");
+var editPostDialog = document.querySelector("#editPostDialog");
+var editPostForm = document.querySelector("#editPostForm");
+var closeEditPost = document.querySelector("#closeEditPost");
+var editPostId = document.querySelector("#editPostId");
+var editTitle = document.querySelector("#editTitle");
+var editDescription = document.querySelector("#editDescription");
+var editTags = document.querySelector("#editTags");
+var editPostWarning = document.querySelector("#editPostWarning");
 
 var ideas = load(STORAGE_KEY, starterIdeas);
 var votes = load(VOTES_KEY, {});
@@ -339,6 +347,7 @@ function appendIdeaSlide(idea) {
   const hint = node.querySelector(".vote-hint");
   const newMarker = node.querySelector(".new-marker");
   const authorLine = node.querySelector(".author-line");
+  const ownerActions = node.querySelector(".owner-actions");
 
   if (!slide || !tags || !title || !description || !approval || !counts) {
     console.error("Sidequestio idea template is missing required elements.");
@@ -350,6 +359,10 @@ function appendIdeaSlide(idea) {
   if (hint && !ideaFeed.children.length) hint.hidden = false;
   if (newMarker && Date.now() - idea.createdAt < DAY_MS) newMarker.hidden = false;
   if (authorLine) authorLine.textContent = authorLabel(idea);
+  if (ownerActions) {
+    ownerActions.hidden = !idea.isMine;
+    ownerActions.addEventListener("click", (event) => handleOwnerAction(event, idea));
+  }
   slide.dataset.vote = votes[idea.id] || "";
   tags.innerHTML = ideaTags(idea).map((tag, index) => {
     const classes = ["tag"];
@@ -428,15 +441,58 @@ function closeAccountDialog() {
 
 function myPostMarkup(idea) {
   return `
-    <article class="my-post-item">
+    <article class="my-post-item" data-focus-idea="${escapeText(idea.id)}">
       <div>
         <strong>${escapeText(idea.title)}</strong>
         <p>${escapeText(idea.description || "No pitch added.")}</p>
         <span>${idea.yes} yes · ${idea.no} no · ${ideaTags(idea).map(escapeText).join(" · ")}</span>
       </div>
-      <button type="button" data-hide-idea="${escapeText(idea.id)}">Hide</button>
+      <div class="my-post-actions">
+        <button class="my-post-edit" type="button" data-edit-idea="${escapeText(idea.id)}">Edit</button>
+        <button class="my-post-hide" type="button" data-hide-idea="${escapeText(idea.id)}">Hide</button>
+      </div>
     </article>
   `;
+}
+
+function tagsFromEditValue(value) {
+  return value.split(",").map(normalizeTag).filter(Boolean).slice(0, TAG_LIMIT);
+}
+
+function ideaById(ideaId) {
+  return ideas.find((idea) => idea.id === ideaId);
+}
+
+function openEditPostDialog(idea) {
+  if (!idea || !idea.isMine) return;
+  if (editPostWarning) editPostWarning.textContent = "";
+  if (editPostId) editPostId.value = idea.id;
+  if (editTitle) editTitle.value = idea.title;
+  if (editDescription) editDescription.value = idea.description || "";
+  if (editTags) editTags.value = ideaTags(idea).join(", ");
+  if (typeof editPostDialog.showModal === "function") editPostDialog.showModal();
+  else editPostDialog.setAttribute("open", "");
+  setTimeout(() => editTitle?.focus(), 60);
+}
+
+async function submitEditPost() {
+  const formData = new FormData(editPostForm);
+  const id = String(formData.get("id") || "");
+  const title = String(formData.get("title") || "").trim();
+  const description = String(formData.get("description") || "").trim();
+  const tags = tagsFromEditValue(String(formData.get("tags") || ""));
+  if (!id || !title || !tags.length) {
+    if (editPostWarning) editPostWarning.textContent = "Add a title and at least one tag.";
+    return;
+  }
+  try {
+    await globalThis.SidequestioApi.updateIdea(id, { title, description, tags });
+    editPostDialog?.close();
+    await Promise.all([loadRemoteState(), myPostsDialog?.open ? refreshMyPosts() : Promise.resolve()]);
+  } catch (error) {
+    console.warn("Sidequestio could not update this post.", error);
+    if (editPostWarning) editPostWarning.textContent = "Could not save those changes yet.";
+  }
 }
 
 async function openMyPostsDialog() {
@@ -466,6 +522,22 @@ async function refreshMyPosts() {
     console.warn("Sidequestio could not load your posts.", error);
     if (myPostsWarning) myPostsWarning.textContent = "Could not load your posts yet.";
   }
+}
+
+function scrollToIdea(ideaId) {
+  const slide = [...document.querySelectorAll(".idea-slide")].find((item) => item.dataset.id === ideaId);
+  if (slide) {
+    myPostsDialog?.close();
+    scrollToSlide(slide);
+  }
+}
+
+function handleOwnerAction(event, idea) {
+  const button = event.target.closest("[data-owner-action]");
+  if (!button) return;
+  event.stopPropagation();
+  if (button.dataset.ownerAction === "edit") openEditPostDialog(idea);
+  if (button.dataset.ownerAction === "hide") hideMyPost(idea.id);
 }
 
 async function hideMyPost(ideaId) {
@@ -987,6 +1059,7 @@ sidequestioShouldBoot && closeComposer.addEventListener("click", () => composerD
 sidequestioShouldBoot && closeProfile.addEventListener("click", closeProfileDialog);
 sidequestioShouldBoot && closeAccount.addEventListener("click", closeAccountDialog);
 sidequestioShouldBoot && closeMyPosts.addEventListener("click", () => myPostsDialog.close());
+sidequestioShouldBoot && closeEditPost.addEventListener("click", () => editPostDialog.close());
 sidequestioShouldBoot && closeReport.addEventListener("click", () => reportDialog.close());
 sidequestioShouldBoot && yesButton.addEventListener("click", () => voteCurrent("yes"));
 sidequestioShouldBoot && noButton.addEventListener("click", () => voteCurrent("no"));
@@ -1013,10 +1086,25 @@ sidequestioShouldBoot && googleButton.addEventListener("click", signInWithGoogle
 sidequestioShouldBoot && logoutButton.addEventListener("click", logoutAccount);
 sidequestioShouldBoot && myPostsButton.addEventListener("click", openMyPostsDialog);
 sidequestioShouldBoot && myPostsList.addEventListener("click", (event) => {
-  const button = event.target.closest("[data-hide-idea]");
-  if (button) hideMyPost(button.dataset.hideIdea);
+  const editButton = event.target.closest("[data-edit-idea]");
+  const hideButton = event.target.closest("[data-hide-idea]");
+  if (editButton) {
+    openEditPostDialog(ideaById(editButton.dataset.editIdea));
+    return;
+  }
+  if (hideButton) {
+    hideMyPost(hideButton.dataset.hideIdea);
+    return;
+  }
+  const item = event.target.closest("[data-focus-idea]");
+  if (item) scrollToIdea(item.dataset.focusIdea);
 });
 sidequestioShouldBoot && window.addEventListener("sidequestio-auth-changed", () => refreshFeed());
+
+sidequestioShouldBoot && editPostForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  await submitEditPost();
+});
 
 sidequestioShouldBoot && profileForm.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -1062,7 +1150,7 @@ sidequestioShouldBoot && ideaForm.addEventListener("submit", async (event) => {
 
 sidequestioShouldBoot && window.addEventListener("keydown", (event) => {
   const isTyping = ["INPUT", "TEXTAREA", "SELECT"].includes(event.target.tagName) || event.target.isContentEditable;
-  if (isTyping || composerDialog.open || profileDialog.open || reportDialog.open || accountDialog.open || myPostsDialog.open) return;
+  if (isTyping || composerDialog.open || profileDialog.open || reportDialog.open || accountDialog.open || myPostsDialog.open || editPostDialog.open) return;
 
   if (event.key === "ArrowRight") {
     event.preventDefault();

@@ -94,10 +94,31 @@
         </div>
         <button class="close-button" id="closeMyPosts" type="button" aria-label="Close my posts"><span aria-hidden="true">×</span></button>
       </div>
-      <p class="profile-help">Hide anything you do not want showing in the public feed anymore.</p>
+      <p class="profile-help">Click a post to jump to it in the feed, or edit/hide it here.</p>
       <div class="my-posts-list" id="myPostsList" aria-live="polite"></div>
       <span class="field-warning" id="myPostsWarning" aria-live="polite"></span>
     </div>
+  </dialog>
+
+  <dialog class="edit-post-dialog" id="editPostDialog" aria-labelledby="editPostTitle">
+    <form id="editPostForm" method="dialog">
+      <div class="composer-head">
+        <div>
+          <p class="micro-label">Update idea</p>
+          <h1 id="editPostTitle">Edit post</h1>
+        </div>
+        <button class="close-button" id="closeEditPost" type="button" aria-label="Close edit post"><span aria-hidden="true">×</span></button>
+      </div>
+      <input id="editPostId" name="id" type="hidden" />
+      <label for="editTitle">Activity</label>
+      <input id="editTitle" name="title" maxlength="72" required />
+      <label for="editDescription">Description</label>
+      <textarea id="editDescription" name="description" maxlength="280"></textarea>
+      <label for="editTags">Tags <span>comma-separated, max 5</span></label>
+      <input id="editTags" name="tags" placeholder="Outdoors, Low effort, Food" required />
+      <span class="field-warning" id="editPostWarning" aria-live="polite"></span>
+      <button class="submit-button" type="submit">Save changes</button>
+    </form>
   </dialog>
 
   <dialog class="profile-dialog" id="profileDialog" aria-labelledby="profileTitle">
@@ -152,7 +173,7 @@
       <input id="title" name="title" maxlength="72" placeholder="Midnight bakery crawl" required />
       <span class="field-warning" id="titleWarning" aria-live="polite"></span>
 
-      <label for="description">Why it could be memorable <span>optional</span></label>
+      <label for="description">Description <span>optional</span></label>
       <textarea id="description" name="description" maxlength="280" placeholder="Add the little detail that makes this worth leaving the couch for."></textarea>
       <span class="field-warning" id="descriptionWarning" aria-live="polite"></span>
 
@@ -227,6 +248,10 @@
           <span class="approval"></span>
           <span class="counts score"></span>
           <button class="delete legacy-delete" type="button" aria-hidden="true" tabindex="-1">delete</button>
+        </div>
+        <div class="owner-actions" hidden>
+          <button class="owner-edit" type="button" data-owner-action="edit">Edit</button>
+          <button class="owner-hide" type="button" data-owner-action="hide">Hide</button>
         </div>
       </section>
     </article>

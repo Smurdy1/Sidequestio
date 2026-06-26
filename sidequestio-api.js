@@ -115,6 +115,16 @@ var SidequestioApi = (() => {
     return data.map(normalizeIdeaRow);
   }
 
+  async function updateIdea(ideaId, { title, description, tags }) {
+    const user = await ensureUser();
+    const { error } = await client
+      .from("ideas")
+      .update({ title, description, tags, updated_at: new Date().toISOString() })
+      .eq("id", ideaId)
+      .eq("user_id", user.id);
+    if (error) throw error;
+  }
+
   async function hideIdea(ideaId) {
     const user = await ensureUser();
     const { error } = await client
@@ -181,7 +191,7 @@ var SidequestioApi = (() => {
     };
   }
 
-  return { client, ensureUser, getCurrentUser, signUpWithPassword, signInWithPassword, signInWithGoogle, signOut, getProfile, saveProfile, getIdeas, getMyVotes, getMyIdeas, hideIdea, createIdea, reportIdea, setVote };
+  return { client, ensureUser, getCurrentUser, signUpWithPassword, signInWithPassword, signInWithGoogle, signOut, getProfile, saveProfile, getIdeas, getMyVotes, getMyIdeas, updateIdea, hideIdea, createIdea, reportIdea, setVote };
 })();
 
 globalThis.SidequestioApi = SidequestioApi;

@@ -1041,3 +1041,91 @@ textarea:focus,
   color: rgba(16, 40, 39, 0.62);
   font-weight: 800;
 }
+
+.owner-actions {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 0 min(136px, 18vw) 36px max(20px, 6vw);
+}
+
+.owner-actions button,
+.my-post-actions button {
+  border-radius: 999px;
+  padding: 9px 12px;
+  font-weight: 950;
+  letter-spacing: 0.035em;
+  backdrop-filter: blur(14px);
+}
+
+.owner-edit,
+.my-post-edit,
+.account-wide {
+  background: rgba(12, 143, 139, 0.14);
+  color: var(--teal);
+  border: 1px solid rgba(12, 143, 139, 0.2);
+}
+
+.owner-hide,
+.my-post-hide {
+  background: rgba(255, 47, 47, 0.14);
+  color: var(--red-deep);
+  border: 1px solid rgba(255, 47, 47, 0.2);
+}
+
+.my-post-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.my-post-item {
+  cursor: pointer;
+}
+
+.edit-post-dialog {
+  width: min(560px, calc(100% - 22px));
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 30px;
+  padding: 0;
+  background: rgba(255, 249, 239, 0.97);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+}
+
+.edit-post-dialog::backdrop {
+  background: rgba(3, 20, 20, 0.68);
+  backdrop-filter: blur(8px);
+}
+
+.edit-post-dialog form {
+  padding: 18px;
+}
+
+.edit-post-dialog .micro-label {
+  color: var(--red-deep);
+}
+
+.edit-post-dialog h1 {
+  margin: 2px 0 0;
+  font-size: clamp(2rem, 7vw, 3.5rem);
+  line-height: 0.92;
+  letter-spacing: -0.045em;
+}
+
+.account-wide.secondary-button {
+  background: rgba(12, 143, 139, 0.12);
+  color: var(--teal);
+}
+
+.my-post-item .my-post-hide {
+  background: rgba(255, 47, 47, 0.12);
+  color: var(--red-deep);
+}
+.my-post-item .my-post-edit {
+  background: rgba(12, 143, 139, 0.12);
+  color: var(--teal);
+}
