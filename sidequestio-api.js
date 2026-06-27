@@ -134,21 +134,20 @@ var SidequestioApi = (() => {
 
     // Do not request a returned row here: once the status changes away from active,
     // the public select policy can hide the row and make a successful update look failed.
-    const hiddenResult = await client
-      .from("ideas")
-      .update({ status: "hidden", updated_at: hiddenAt })
-      .eq("id", ideaId)
-      .eq("user_id", user.id);
-    if (!hiddenResult.error) return;
+    const fallbackStatuses = ["hidden", "removed", "reported"];
+    let lastError = rpcResult.error;
 
-    const removedResult = await client
-      .from("ideas")
-      .update({ status: "removed", updated_at: hiddenAt })
-      .eq("id", ideaId)
-      .eq("user_id", user.id);
-    if (!removedResult.error) return;
+    for (const status of fallbackStatuses) {
+      const result = await client
+        .from("ideas")
+        .update({ status, updated_at: hiddenAt })
+        .eq("id", ideaId)
+        .eq("user_id", user.id);
+      if (!result.error) return;
+      lastError = result.error;
+    }
 
-    throw removedResult.error || hiddenResult.error || rpcResult.error;
+    throw lastError;
   }
 
   async function createIdea({ title, description, tags }) {

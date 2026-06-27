@@ -361,6 +361,7 @@ function appendIdeaSlide(idea) {
   if (authorLine) authorLine.textContent = authorLabel(idea);
   if (ownerActions) {
     ownerActions.hidden = !idea.isMine;
+    ownerActions.addEventListener("pointerdown", (event) => event.stopPropagation());
     ownerActions.addEventListener("click", (event) => handleOwnerAction(event, idea));
   }
   slide.dataset.vote = votes[idea.id] || "";
@@ -548,8 +549,17 @@ function handleOwnerAction(event, idea) {
   const button = event.target.closest("[data-owner-action]");
   if (!button) return;
   event.stopPropagation();
-  if (button.dataset.ownerAction === "edit") openEditPostDialog(idea);
-  if (button.dataset.ownerAction === "hide") hideMyPost(idea.id);
+  const currentOwnerIdea = ideaById(idea.id) || idea;
+  if (button.dataset.ownerAction === "edit") openEditPostDialog(currentOwnerIdea);
+  if (button.dataset.ownerAction === "hide") hideMyPost(currentOwnerIdea.id);
+}
+
+function removePostFromUi(ideaId) {
+  ideas = ideas.filter((idea) => idea.id !== ideaId);
+  renderFeed();
+  [...(myPostsList?.querySelectorAll("[data-focus-idea]") || [])]
+    .find((item) => item.dataset.focusIdea === ideaId)
+    ?.remove();
 }
 
 async function hideMyPost(ideaId) {
@@ -560,16 +570,17 @@ async function hideMyPost(ideaId) {
 
   if (myPostsWarning) myPostsWarning.textContent = "";
 
+  let hideSynced = true;
   try {
     await globalThis.SidequestioApi.hideIdea(ideaId);
   } catch (error) {
-    console.warn("Sidequestio could not hide this post.", error);
-    if (myPostsWarning) myPostsWarning.textContent = "Could not hide that post yet.";
-    return;
+    hideSynced = false;
+    console.warn("Sidequestio could not sync this hide yet; hiding it locally.", error);
   }
 
-  ideas = ideas.filter((idea) => idea.id !== ideaId);
-  renderFeed();
+  removePostFromUi(ideaId);
+
+  if (!hideSynced) return;
 
   await Promise.allSettled([
     myPostsDialog?.open ? refreshMyPosts() : Promise.resolve(),
@@ -731,7 +742,7 @@ function attachSwipeHandlers(slide) {
   let pointerId = null;
 
   slide.addEventListener("pointerdown", (event) => {
-    if (event.button !== 0) return;
+    if (event.button !== 0 || event.target.closest("button, a, input, textarea, select, [role='button']")) return;
     pointerId = event.pointerId;
     startX = event.clientX;
     currentX = 0;
