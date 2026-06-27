@@ -132,26 +132,23 @@ var SidequestioApi = (() => {
     const rpcResult = await client.rpc("hide_own_idea", { idea_id: ideaId });
     if (!rpcResult.error) return;
 
-    const updateAttempts = [
-      { status: "hidden", updated_at: hiddenAt },
-      { status: "removed", updated_at: hiddenAt }
-    ];
+    // Do not request a returned row here: once the status changes away from active,
+    // the public select policy can hide the row and make a successful update look failed.
+    const hiddenResult = await client
+      .from("ideas")
+      .update({ status: "hidden", updated_at: hiddenAt })
+      .eq("id", ideaId)
+      .eq("user_id", user.id);
+    if (!hiddenResult.error) return;
 
-    let lastError = rpcResult.error;
-    for (const patch of updateAttempts) {
-      const { data, error } = await client
-        .from("ideas")
-        .update(patch)
-        .eq("id", ideaId)
-        .eq("user_id", user.id)
-        .select("id")
-        .maybeSingle();
+    const removedResult = await client
+      .from("ideas")
+      .update({ status: "removed", updated_at: hiddenAt })
+      .eq("id", ideaId)
+      .eq("user_id", user.id);
+    if (!removedResult.error) return;
 
-      if (!error && data?.id) return;
-      lastError = error || new Error("No owned post matched that hide request.");
-    }
-
-    throw lastError;
+    throw removedResult.error || hiddenResult.error || rpcResult.error;
   }
 
   async function createIdea({ title, description, tags }) {
