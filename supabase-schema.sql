@@ -117,6 +117,27 @@ alter table public.moderation_events enable row level security;
 grant select on public.ideas_with_counts to anon, authenticated;
 grant select, insert, update on public.profiles to anon, authenticated;
 grant select, insert, update on public.ideas to anon, authenticated;
+
+create or replace function public.hide_own_idea(idea_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  update public.ideas
+  set status = 'hidden', updated_at = now()
+  where id = idea_id
+    and user_id = auth.uid()
+    and status = 'active';
+
+  if not found then
+    raise exception 'No active owned idea matched that hide request.' using errcode = 'P0002';
+  end if;
+end;
+$$;
+
+grant execute on function public.hide_own_idea(uuid) to authenticated;
 grant select, insert, update, delete on public.votes to anon, authenticated;
 grant select, insert on public.reports to anon, authenticated;
 

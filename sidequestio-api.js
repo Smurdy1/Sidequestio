@@ -127,12 +127,28 @@ var SidequestioApi = (() => {
 
   async function hideIdea(ideaId) {
     const user = await ensureUser();
-    const { error } = await client
+    const hiddenAt = new Date().toISOString();
+
+    const rpcResult = await client.rpc("hide_own_idea", { idea_id: ideaId });
+    if (!rpcResult.error) return;
+
+    // Do not request a returned row here: once the status changes away from active,
+    // the public select policy can hide the row and make a successful update look failed.
+    const hiddenResult = await client
       .from("ideas")
-      .update({ status: "hidden", updated_at: new Date().toISOString() })
+      .update({ status: "hidden", updated_at: hiddenAt })
       .eq("id", ideaId)
       .eq("user_id", user.id);
-    if (error) throw error;
+    if (!hiddenResult.error) return;
+
+    const removedResult = await client
+      .from("ideas")
+      .update({ status: "removed", updated_at: hiddenAt })
+      .eq("id", ideaId)
+      .eq("user_id", user.id);
+    if (!removedResult.error) return;
+
+    throw removedResult.error || hiddenResult.error || rpcResult.error;
   }
 
   async function createIdea({ title, description, tags }) {
