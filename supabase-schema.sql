@@ -118,22 +118,30 @@ grant select on public.ideas_with_counts to anon, authenticated;
 grant select, insert, update on public.profiles to anon, authenticated;
 grant select, insert, update on public.ideas to anon, authenticated;
 
-create or replace function public.hide_own_idea(idea_id uuid)
-returns void
+create or replace function public.hide_own_idea(p_idea_id uuid)
+returns uuid
 language plpgsql
 security definer
 set search_path = public
 as $$
+declare
+  hidden_idea_id uuid;
 begin
   update public.ideas
   set status = 'hidden', updated_at = now()
-  where id = idea_id
+  where id = p_idea_id
     and user_id = auth.uid()
-    and status = 'active';
+    and status = 'active'
+  returning id into hidden_idea_id;
 
-  if not found then
+  if hidden_idea_id is null then
     raise exception 'No active owned idea matched that hide request.' using errcode = 'P0002';
   end if;
+
+  insert into public.moderation_events (idea_id, event_type, report_count)
+  values (hidden_idea_id, 'hidden_for_review', 0);
+
+  return hidden_idea_id;
 end;
 $$;
 

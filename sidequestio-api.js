@@ -129,25 +129,21 @@ var SidequestioApi = (() => {
     const user = await ensureUser();
     const hiddenAt = new Date().toISOString();
 
-    const rpcResult = await client.rpc("hide_own_idea", { idea_id: ideaId });
+    const rpcResult = await client.rpc("hide_own_idea", { p_idea_id: ideaId });
     if (!rpcResult.error) return;
 
-    // Do not request a returned row here: once the status changes away from active,
-    // the public select policy can hide the row and make a successful update look failed.
-    const fallbackStatuses = ["hidden", "removed", "reported"];
-    let lastError = rpcResult.error;
+    const legacyRpcResult = await client.rpc("hide_own_idea", { idea_id: ideaId });
+    if (!legacyRpcResult.error) return;
 
-    for (const status of fallbackStatuses) {
-      const result = await client
-        .from("ideas")
-        .update({ status, updated_at: hiddenAt })
-        .eq("id", ideaId)
-        .eq("user_id", user.id);
-      if (!result.error) return;
-      lastError = result.error;
-    }
+    const { error, count } = await client
+      .from("ideas")
+      .update({ status: "hidden", updated_at: hiddenAt }, { count: "exact" })
+      .eq("id", ideaId)
+      .eq("user_id", user.id)
+      .eq("status", "active");
 
-    throw lastError;
+    if (error) throw error;
+    if (count === 0) throw legacyRpcResult.error || rpcResult.error || new Error("No active owned post matched that hide request.");
   }
 
   async function createIdea({ title, description, tags }) {
