@@ -127,12 +127,31 @@ var SidequestioApi = (() => {
 
   async function hideIdea(ideaId) {
     const user = await ensureUser();
-    const { error } = await client
-      .from("ideas")
-      .update({ status: "hidden", updated_at: new Date().toISOString() })
-      .eq("id", ideaId)
-      .eq("user_id", user.id);
-    if (error) throw error;
+    const hiddenAt = new Date().toISOString();
+
+    const rpcResult = await client.rpc("hide_own_idea", { idea_id: ideaId });
+    if (!rpcResult.error) return;
+
+    const updateAttempts = [
+      { status: "hidden", updated_at: hiddenAt },
+      { status: "removed", updated_at: hiddenAt }
+    ];
+
+    let lastError = rpcResult.error;
+    for (const patch of updateAttempts) {
+      const { data, error } = await client
+        .from("ideas")
+        .update(patch)
+        .eq("id", ideaId)
+        .eq("user_id", user.id)
+        .select("id")
+        .maybeSingle();
+
+      if (!error && data?.id) return;
+      lastError = error || new Error("No owned post matched that hide request.");
+    }
+
+    throw lastError;
   }
 
   async function createIdea({ title, description, tags }) {

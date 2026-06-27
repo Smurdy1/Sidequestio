@@ -440,9 +440,11 @@ function closeAccountDialog() {
 }
 
 function closePostPanels() {
-  accountDialog?.close();
-  myPostsDialog?.close();
-  editPostDialog?.close();
+  document.querySelectorAll("dialog[open]").forEach((dialog) => dialog.close());
+}
+
+function afterDialogClose() {
+  return new Promise((resolve) => requestAnimationFrame(resolve));
 }
 
 function myPostMarkup(idea) {
@@ -454,8 +456,8 @@ function myPostMarkup(idea) {
         <span>${idea.yes} yes · ${idea.no} no · ${ideaTags(idea).map(escapeText).join(" · ")}</span>
       </div>
       <div class="my-post-actions">
-        <button class="my-post-edit" type="button" data-edit-idea="${escapeText(idea.id)}">Edit</button>
-        <button class="my-post-hide" type="button" data-hide-idea="${escapeText(idea.id)}">Hide</button>
+        <button class="my-post-edit" type="button" data-edit-idea="${escapeText(idea.id)}">Edit post</button>
+        <button class="my-post-hide" type="button" data-hide-idea="${escapeText(idea.id)}">Hide post</button>
       </div>
     </article>
   `;
@@ -502,7 +504,10 @@ async function submitEditPost() {
 }
 
 async function openMyPostsDialog() {
-  accountDialog?.close();
+  if (accountDialog?.open) {
+    accountDialog.close();
+    await afterDialogClose();
+  }
   if (!currentUser) {
     openAccountDialog("login");
     return;
