@@ -75,6 +75,7 @@ var yesButton = document.querySelector("#yesButton");
 var noButton = document.querySelector("#noButton");
 var undoButton = document.querySelector("#undoButton");
 var copyButton = document.querySelector("#copyButton");
+var randomButton = document.querySelector("#randomButton");
 var reportButton = document.querySelector("#reportButton");
 var profileButton = document.querySelector("#profileButton");
 var accountButton = document.querySelector("#accountButton");
@@ -361,7 +362,6 @@ function appendIdeaSlide(idea) {
   if (authorLine) authorLine.textContent = authorLabel(idea);
   if (ownerActions) {
     ownerActions.hidden = !idea.isMine;
-    ownerActions.addEventListener("pointerdown", (event) => event.stopPropagation());
     ownerActions.addEventListener("click", (event) => handleOwnerAction(event, idea));
   }
   slide.dataset.vote = votes[idea.id] || "";
@@ -440,14 +440,6 @@ function closeAccountDialog() {
   accountDialog?.close();
 }
 
-function closePostPanels() {
-  document.querySelectorAll("dialog[open]").forEach((dialog) => dialog.close());
-}
-
-function afterDialogClose() {
-  return new Promise((resolve) => requestAnimationFrame(resolve));
-}
-
 function myPostMarkup(idea) {
   return `
     <article class="my-post-item" data-focus-idea="${escapeText(idea.id)}">
@@ -457,8 +449,8 @@ function myPostMarkup(idea) {
         <span>${idea.yes} yes · ${idea.no} no · ${ideaTags(idea).map(escapeText).join(" · ")}</span>
       </div>
       <div class="my-post-actions">
-        <button class="my-post-edit" type="button" data-edit-idea="${escapeText(idea.id)}">Edit post</button>
-        <button class="my-post-hide" type="button" data-hide-idea="${escapeText(idea.id)}">Hide post</button>
+        <button class="my-post-edit" type="button" data-edit-idea="${escapeText(idea.id)}">Edit</button>
+        <button class="my-post-hide" type="button" data-hide-idea="${escapeText(idea.id)}">Hide</button>
       </div>
     </article>
   `;
@@ -505,10 +497,6 @@ async function submitEditPost() {
 }
 
 async function openMyPostsDialog() {
-  if (accountDialog?.open) {
-    accountDialog.close();
-    await afterDialogClose();
-  }
   if (!currentUser) {
     openAccountDialog("login");
     return;
@@ -540,7 +528,7 @@ async function refreshMyPosts() {
 function scrollToIdea(ideaId) {
   const slide = [...document.querySelectorAll(".idea-slide")].find((item) => item.dataset.id === ideaId);
   if (slide) {
-    closePostPanels();
+    myPostsDialog?.close();
     scrollToSlide(slide);
   }
 }
@@ -549,43 +537,18 @@ function handleOwnerAction(event, idea) {
   const button = event.target.closest("[data-owner-action]");
   if (!button) return;
   event.stopPropagation();
-  const currentOwnerIdea = ideaById(idea.id) || idea;
-  if (button.dataset.ownerAction === "edit") openEditPostDialog(currentOwnerIdea);
-  if (button.dataset.ownerAction === "hide") hideMyPost(currentOwnerIdea.id);
-}
-
-function removePostFromUi(ideaId) {
-  ideas = ideas.filter((idea) => idea.id !== ideaId);
-  renderFeed();
-  [...(myPostsList?.querySelectorAll("[data-focus-idea]") || [])]
-    .find((item) => item.dataset.focusIdea === ideaId)
-    ?.remove();
+  if (button.dataset.ownerAction === "edit") openEditPostDialog(idea);
+  if (button.dataset.ownerAction === "hide") hideMyPost(idea.id);
 }
 
 async function hideMyPost(ideaId) {
-  if (!currentUser || !globalThis.SidequestioApi || !remoteReady) {
-    if (myPostsWarning) myPostsWarning.textContent = "Sign in to hide your post.";
-    return;
-  }
-
-  if (myPostsWarning) myPostsWarning.textContent = "";
-
-  let hideSynced = true;
   try {
     await globalThis.SidequestioApi.hideIdea(ideaId);
+    await Promise.all([refreshMyPosts(), loadRemoteState()]);
   } catch (error) {
-    hideSynced = false;
-    console.warn("Sidequestio could not sync this hide yet; hiding it locally.", error);
+    console.warn("Sidequestio could not hide this post.", error);
+    if (myPostsWarning) myPostsWarning.textContent = "Could not hide that post yet.";
   }
-
-  removePostFromUi(ideaId);
-
-  if (!hideSynced) return;
-
-  await Promise.allSettled([
-    myPostsDialog?.open ? refreshMyPosts() : Promise.resolve(),
-    loadRemoteState()
-  ]);
 }
 
 function authPayload(form) {
@@ -742,7 +705,7 @@ function attachSwipeHandlers(slide) {
   let pointerId = null;
 
   slide.addEventListener("pointerdown", (event) => {
-    if (event.button !== 0 || event.target.closest("button, a, input, textarea, select, [role='button']")) return;
+    if (event.button !== 0) return;
     pointerId = event.pointerId;
     startX = event.clientX;
     currentX = 0;
@@ -955,6 +918,7 @@ function updateActionStates() {
   yesButton.disabled = !currentUser;
   noButton.disabled = !currentUser;
   undoButton.disabled = !currentUser || !lastVote;
+  if (randomButton) randomButton.disabled = !renderedOrder.length;
   if (reportButton) reportButton.disabled = !currentUser || !currentIdeaId || Boolean(currentIdea()?.isMine);
 }
 
@@ -965,6 +929,25 @@ function openComposerDialog() {
   } else {
     composerDialog.setAttribute("open", "");
   }
+}
+
+
+function showRandomIdea() {
+  if (!renderedOrder.length) return;
+  const availableIdeas = renderedOrder.length > 1
+    ? renderedOrder.filter((idea) => idea.id !== currentIdeaId)
+    : renderedOrder;
+  const randomIdea = availableIdeas[Math.floor(Math.random() * availableIdeas.length)];
+  let slide = [...document.querySelectorAll(`.idea-slide[data-id="${randomIdea.id}"]`)]
+    .find((item) => item !== currentSlide);
+
+  if (!slide) {
+    appendIdeaSlides(1);
+    slide = [...document.querySelectorAll(`.idea-slide[data-id="${randomIdea.id}"]`)]
+      .find((item) => item !== currentSlide) || document.querySelector(`.idea-slide[data-id="${randomIdea.id}"]`);
+  }
+
+  scrollToSlide(slide);
 }
 
 function currentIdea() {
@@ -1103,6 +1086,7 @@ sidequestioShouldBoot && yesButton.addEventListener("click", () => voteCurrent("
 sidequestioShouldBoot && noButton.addEventListener("click", () => voteCurrent("no"));
 sidequestioShouldBoot && undoButton.addEventListener("click", undoLastVote);
 sidequestioShouldBoot && copyButton.addEventListener("click", copyCurrentIdea);
+sidequestioShouldBoot && randomButton.addEventListener("click", showRandomIdea);
 sidequestioShouldBoot && reportButton.addEventListener("click", openReportDialog);
 sidequestioShouldBoot && titleInput.addEventListener("input", () => updateCharacterWarning(titleInput, titleWarning, 10));
 sidequestioShouldBoot && descriptionInput.addEventListener("input", () => updateCharacterWarning(descriptionInput, descriptionWarning, 40));
